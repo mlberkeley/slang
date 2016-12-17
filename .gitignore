@@ -1,0 +1,9 @@
+.DS_Store
+
+*.swp
+*.pyc
+*.aux
+*.log
+*.synctex.gz
+
+data/fiction
