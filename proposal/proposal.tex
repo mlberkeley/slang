@@ -1,0 +1,77 @@
+\documentclass[letter]{article}
+
+\usepackage{lipsum}
+\usepackage[pdftex]{graphicx}
+\usepackage[margin=1.5in]{geometry}
+\usepackage[english]{babel}
+\usepackage{listings}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{framed} 
+\usepackage{amsmath}
+\usepackage{titling}
+\usepackage{fancyhdr}
+\usepackage{enumerate}
+
+\newcommand\tab[1][1cm]{\hspace*{#1}}
+
+%%%%%%%%%%%%%%%
+%% DOC INFO %%%
+%%%%%%%%%%%%%%%
+
+
+\title{Research Proposal: A System for Learned Artificial Narrative Generation (SLANG)}
+\author{Brenton Chu\\Machine Learning at Berkeley\\brentonlongchu@berkeley.edu}
+
+\fancyhead[L]{}
+\fancyhead[CO]{Research Proposal}
+\fancyhead[CE]{GUSS}
+\fancyhead[R]{\thepage}
+\fancyfoot[LR]{}
+\fancyfoot[C]{}
+\usepackage{csquotes}
+    
+
+
+\pagestyle{fancy}
+
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{definition}{Definition}
+\newtheorem{lemma}{Lemma}
+
+\newenvironment{menumerate}{%
+  \edef\backupindent{\the\parindent}%
+  \enumerate%
+  \setlength{\parindent}{\backupindent}%
+}{\endenumerate}
+
+%%%%%%%%%%%%%%
+
+\begin{document}
+\maketitle
+\section{Background}
+\tab The history of artificial narrative generation goes back several decades. The first such system was the Novel Writer system (Klein et al. 1973), which could write a mystery story given high level details about the story. In the following years, many other story writing algorithms were created to tackle various aspects of story telling: TALESPIN (Meehan 1977) wrote short stories about woodland creatures that would come up with plans to solve a certain goal, UNIVERSE (Lebowitz 1983) created strings of stories between characters that would be told indefinitely, MINSTREL (Turner 1993) would write stories about King Arthur starting from a provided statement on morality, and BRUTUS (Bringsjord \& Ferrucci 1999) focused on building a model for writing about the intricacies of betrayal.\\
+\tab However, all of these algorithms had elements that significantly detracted from their writing abilities and disqualified them from being considered true artificial creative writing agents. The majority of the algorithms wrote very simplistic and short stories; for example, TALESPIN's stories often contained only a single actor and were limited in length to only a handful of sentences. Almost all these algorithms contained a significant amount of user provided information, the most guilty of these is the Novel Writer system, which requires the murder and victim character traits, relationships between the characters, and motivations all to be provided. Oftentimes, significant compromises are made between intricacy and creativity. While BRUTUS was capable of creating a story full of intrigue and complexity, it could only do so by attempting to rewrite and mimic a particular specific existing human-created story. Most significantly, all these algorithms were heavily limited in that not only were the stories each algorithm could write constrained to genre or even subgenres, but were only able to create a story with a specific structure within a subgenre.\\
+\tab Beyond purely narrative generation, significant progress has been made in natural language processing and text generation, as well as generative neural network models. Word2vec (Mikolov et al. 2013) is a powerful method for translating words from sample text to real-valued vectors. Variational autoencoders (Kingma \& Welling 2013) and generative adversarial networks (Goodfellow et al. 2014) have been shown to be effectively generate data that is similar to sample data, and VAEs have been used to produce sentences from a continuous space (Bowman et al. 2015).
+\section{Description}
+\tab We plan to develop an algorithm that would be able to write syntactically and contextually consistent stories of any arbitrary length, with minimal user input beyond a random seed and a select few parameters. This system would learn from a large collection of stories written by humans (Project Gutenberg has a large collection of freely available texts), and would be able to generate a story of its own without attempting to mimic any particular story or story structure. The most promising starting point as determined by initial investigation is using a generative model such as GANs or VAEs that utilize a network that can account for temporal correlations in data (such as LSTMs or other temporally sensitive models) in order to create text at the word level. We are considering a hierarchical recursive model (similar to the snowflake method of writing stories) that encodes an abstract actor-interaction model which would be used as a base from which to derive generated sentences.
+\section{Goals}
+\begin{menumerate}
+    \item Design and implement an algorithm that can create syntactically and contextually consistent single sentences with no user input (aside from a given random seed).
+    \item Expand the capabilities of the algorithm to be able to write a sequence of sentences with a non-contradictory and sensible sequence of events across the sentences.
+     \item Enable the algorithm to extend the capabilities of the previous step to any arbitrary length within a certain genre and be able to maintain a cohesive storyline throughout.
+     \item Improve the algorithm to account for a range of genres, and be capable of having an artificially generated narrative pass off as prose written by a proficient author.
+     \item Continue to improve the algorithm in terms of creativity and complexity until we've reached AGI.
+     \item ???
+     \item Profit!
+\end{menumerate}
+\section{Plans}
+\tab We can begin by basing our initial work in existing efforts in sentence generation, especially (Bowman et al.), as well as attempting to translate current generative models for images into a form that can be applied for textual data. The most difficult transition will be that from a single sentence to a sequence of cohesive sentences, and a robust method of retaining and understanding how to use relevant contextual information is required. A Neural Turing Machine (Graves et al. 2014) is a potential candidate to address this issue, but further research is needed. As mentioned earlier in the project description, a recursive expansion of an abstract actor-integration model of describing the flow of a story may be effective in expanding the length of a story to any desired value. We would prefer to begin by limiting ourselves to only a particular genres, as certain genres (most notably fantasy) may be particularly difficult due to liberties taken in common sense logic and other assumptions prevalent in such stories. Once able to successfully write in "easier" genres, we will look towards extending to all genres, hopefully by generalizing the methods employed in writing the algorithm for a single genre. 
+\section{Significance of the Project}
+\tab Artificial intelligence and machine learning algorithms, particularly neural networks, have traditionally been most often used from prediction and discrimination, or making decisions given existing data. However, recently there has been an influx of interest and progress on using neural networks for generation as well, as evidenced by the number of papers published on generative models in the recent years. The ability to produce novel and engaging content has been seen as a uniquely human trait and evidence for human creativity and ingenuity, and having a machine be able to also synthesize such content would be a great advancement in the field of AI.\\
+\tab Being able to mimic and possibly even understand human language has often been seen as the holy grail of artificial intelligence, and even the famous Turing test is derived from that idea. It is not unreasonable to think that a successful artificial narrative generation agent is not too far off from one that can successfully (and legitimately, without abusing any loopholes in the rules) pass the Turing test, as both would need to be capable of using language, contextual understanding, and proper utilization or prior knowledge, among others.
+\section{Qualifications}
+\tab I've taken and received high marks on CS 189, have explored ML, NLP, and other subjects relevant to this project beyond available undergraduate material through reading papers, and have done amateur novel writing (and thus have experience in the human perspective of this project).\\
+\tab Piyush Patil will be working with me on this project, and this is what he has to say about his qualifications: I've taken CS 170 (algorithms), CS 188 (artificial intelligence), and am currently enrolled in CS 189 (machine learning). I've also completed the degree in mathematics, conducted NLP research at the Berkeley Institute of Data Science, and worked with computer vision models in industry. Like Brenton, I've avidly explored and followed research papers on the frontier of machine learning and AI, and have professional experience working with large complex systems.
+\end{document}
