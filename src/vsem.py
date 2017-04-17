@@ -142,20 +142,26 @@ class VSEM(model.Model):
         _, _, z = self.encode(x)
         return self.decode(z)
 
-    def encode_text(self, book_url, ckpt_path, params):
+    # params needs to be fed 'encode_hid' and 'latent dims'
+    def encode_text(self, params, book_url, book_name, ckpt_path, save=False):
         text = data(book_url)
         textLen = len(text.allSentences)
-        encoded_text = []
+
+        onehot_text = []
         for i in range(textLen):
-            encoded_text.append(text.getOneHotSentence(i))
-        encoded_text = np.array(encoded_text)
+            onehot_text.append(text.getOneHotSentence(i))
+        onehot_text = np.array(onehot_text)
+
+        vocab_size = text.wordEncoding.shape[0]
+        seq_len = text.maxSentenceLength
 
         # Load in saved parameters.
-        # How to load in encoder?
+        # Not sure if loading in encoder correctly
+        # Don't use dropout (not training anyway), batchsize = 1
+        x = tf.placeholder(tf.float32, [textLen, seq_len, vocab_size])
         encode_lstm = tf.contrib.rnn.LSTMCell(params['encode_hid'])
-        encode_lstm_dropout = tf.contrib.rnn.DropoutWrapper(encode_lstm, params['keep_prob'])
-        encode_init = encode_lstm.zero_state(textLen, tf.float32)
-        encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_lstm, encoded_text,
+        encode_init = encode_lstm.zero_state(1, tf.float32)
+        encode_outputs, _ = tf.nn.dynamic_rnn(encode_lstm, x,
                                                          initial_state = encode_init)
         h = encode_outputs[:, -1, :]
         w_mu = tf.get_variable('w_mu', [params['encode_hid'], params['latent_dims']])
@@ -164,13 +170,18 @@ class VSEM(model.Model):
         b_var = tf.get_variable('b_var', params['latent_dims'])
         mu = tf.matmul(h, weights['w_mu']) + weights['b_mu']
         log_var = tf.matmul(h, weights['w_var']) + weights['b_var']
-        sample_normal = tf.random_normal([params['latent_dims']])
-        z = tf.sqrt(tf.exp(log_var)) + mu
+        sample_normal = tf.random_normal([1, params['latent_dims']])
+        z = tf.sqrt(tf.exp(log_var) * sample_normal) + mu
 
         with tf.Session() as sess:
             restore = tf.train.Saver([encode_lstm, w_mu, b_mu, w_var, b_var])
             restore.restore(sess, ckpt_path)
             init = tf.global_variables_initializer()
-            mu, log_var, z = sess.run([self.mu, self.log_var, self.z])
+            book_mu, book_log_var, book_z = sess.run([mu, log_var, z], feed_dict = {x: onehot_text})
 
-        return mu[0,:], log_var[0,:], z[0,:]
+        if save:
+            np.save(book_name + "_mu.npy", book_mu[0,:])
+            np.save(book_name + "_log_var.npy", book_log_var[0,:])
+            np.save(book_name + "_z.npy", book_z[0,:])
+
+        return book_mu[0,:], book_log_var[0,:], book_z[0,:]
