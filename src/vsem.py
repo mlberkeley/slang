@@ -1,11 +1,13 @@
 import numpy as np
 import tensorflow as tf
+from onehot import data
 import model
 
 """The Variational Sentence Encoding Model. Learns a continuous space sentence encoding using a
 seq2seq LSTM variational autoencoder."""
 class VSEM(model.Model):
     def construct(self, params):
+        self.params = params
         self.keep_prob = tf.placeholder(tf.float32)
         self.batch_size = tf.placeholder(tf.int32)
         self.kl_alpha = tf.placeholder(tf.float32)
@@ -65,14 +67,14 @@ class VSEM(model.Model):
                 self.weights['b_out'] = tf.get_variable('b_out', params['vocab_size'],
                                                         initializer=tf.zeros_initializer())
                 out_flat = tf.reshape(decode_outputs, [-1, params['decode_hid']])
-                y_flat = tf.matmul(out_flat, self.weights['w_out']) + self.weights['b_out'] 
+                y_flat = tf.matmul(out_flat, self.weights['w_out']) + self.weights['b_out']
                 self.y_ = tf.reshape(y_flat, [-1, params['seq_len'], params['vocab_size']])
                 self.pred = tf.nn.softmax(self.y_)
                 tf.summary.scalar('prediction_confidence', tf.reduce_mean(tf.reduce_max(self.pred, 2)))
                 reconstr_l = tf.cast(tf.argmax(self.pred, axis=2), tf.int32)
                 acc = tf.reduce_mean(tf.cast(tf.equal(self.x_l, reconstr_l), tf.float32))
                 tf.summary.scalar('batch_accuracy', acc)
-        
+
         # calculate loss
         with tf.variable_scope('loss'):
             with tf.variable_scope('kullback_leibler'):
@@ -134,8 +136,41 @@ class VSEM(model.Model):
             if i < seq_len - 1:
                 feed[self.x_p][:, i+1, :] = pred[:, i+1, :]
         return pred[0,:,:]
-                
+
 
     def predict(self, x):
         _, _, z = self.encode(x)
         return self.decode(z)
+
+    def encode_text(self, book_url, ckpt_path, params):
+        text = data(book_url)
+        textLen = len(text.allSentences)
+        encoded_text = []
+        for i in range(textLen):
+            encoded_text.append(text.getOneHotSentence(i))
+        encoded_text = np.array(encoded_text)
+
+        # Load in saved parameters.
+        # How to load in encoder?
+        encode_lstm = tf.contrib.rnn.LSTMCell(params['encode_hid'])
+        encode_lstm_dropout = tf.contrib.rnn.DropoutWrapper(encode_lstm, params['keep_prob'])
+        encode_init = encode_lstm.zero_state(textLen, tf.float32)
+        encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_lstm, encoded_text,
+                                                         initial_state = encode_init)
+        h = encode_outputs[:, -1, :]
+        w_mu = tf.get_variable('w_mu', [params['encode_hid'], params['latent_dims']])
+        b_mu = tf.get_variable('b_mu', params['latent_dims'])
+        w_var = tf.get_variable('w_var', [params['encode_hid'], params['latent_dims']])
+        b_var = tf.get_variable('b_var', params['latent_dims'])
+        mu = tf.matmul(h, weights['w_mu']) + weights['b_mu']
+        log_var = tf.matmul(h, weights['w_var']) + weights['b_var']
+        sample_normal = tf.random_normal([params['latent_dims']])
+        z = tf.sqrt(tf.exp(log_var)) + mu
+
+        with tf.Session() as sess:
+            restore = tf.train.Saver([encode_lstm, w_mu, b_mu, w_var, b_var])
+            restore.restore(sess, ckpt_path)
+            init = tf.global_variables_initializer()
+            mu, log_var, z = sess.run([self.mu, self.log_var, self.z])
+
+        return mu[0,:], log_var[0,:], z[0,:]
