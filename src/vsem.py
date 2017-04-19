@@ -1,6 +1,5 @@
 import numpy as np
 import tensorflow as tf
-from onehot import data
 import model
 
 """The Variational Sentence Encoding Model. Learns a continuous space sentence encoding using a
@@ -141,47 +140,3 @@ class VSEM(model.Model):
     def predict(self, x):
         _, _, z = self.encode(x)
         return self.decode(z)
-
-    # params needs to be fed 'encode_hid' and 'latent dims'
-    def encode_text(self, params, book_url, book_name, ckpt_path, save=False):
-        text = data(book_url)
-        textLen = len(text.allSentences)
-
-        onehot_text = []
-        for i in range(textLen):
-            onehot_text.append(text.getOneHotSentence(i))
-        onehot_text = np.array(onehot_text)
-
-        vocab_size = text.wordEncoding.shape[0]
-        seq_len = text.maxSentenceLength
-
-        # Load in saved parameters.
-        # Not sure if loading in encoder correctly
-        # Don't use dropout (not training anyway), batchsize = 1
-        x = tf.placeholder(tf.float32, [textLen, seq_len, vocab_size])
-        encode_lstm = tf.contrib.rnn.LSTMCell(params['encode_hid'])
-        encode_init = encode_lstm.zero_state(1, tf.float32)
-        encode_outputs, _ = tf.nn.dynamic_rnn(encode_lstm, x,
-                                                         initial_state = encode_init)
-        h = encode_outputs[:, -1, :]
-        w_mu = tf.get_variable('w_mu', [params['encode_hid'], params['latent_dims']])
-        b_mu = tf.get_variable('b_mu', params['latent_dims'])
-        w_var = tf.get_variable('w_var', [params['encode_hid'], params['latent_dims']])
-        b_var = tf.get_variable('b_var', params['latent_dims'])
-        mu = tf.matmul(h, weights['w_mu']) + weights['b_mu']
-        log_var = tf.matmul(h, weights['w_var']) + weights['b_var']
-        sample_normal = tf.random_normal([1, params['latent_dims']])
-        z = tf.sqrt(tf.exp(log_var) * sample_normal) + mu
-
-        with tf.Session() as sess:
-            restore = tf.train.Saver([encode_lstm, w_mu, b_mu, w_var, b_var])
-            restore.restore(sess, ckpt_path)
-            init = tf.global_variables_initializer()
-            book_mu, book_log_var, book_z = sess.run([mu, log_var, z], feed_dict = {x: onehot_text})
-
-        if save:
-            np.save(book_name + "_mu.npy", book_mu[0,:])
-            np.save(book_name + "_log_var.npy", book_log_var[0,:])
-            np.save(book_name + "_z.npy", book_z[0,:])
-
-        return book_mu[0,:], book_log_var[0,:], book_z[0,:]
