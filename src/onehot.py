@@ -1,5 +1,31 @@
-class data:
 
+# coding: utf-8
+
+# In[18]:
+
+import numpy as np
+import nltk, pprint
+from nltk import word_tokenize
+from nltk.tokenize import sent_tokenize
+from urllib.request import urlopen
+from sklearn.preprocessing import OneHotEncoder
+from sklearn import preprocessing
+import re
+import time
+import pickle
+import unicodedata
+from pylab import rcParams
+import csv
+
+# nltk.download() # Might need this if tokenize doens't work
+
+
+# ## Data class 
+
+# In[116]:
+
+class data:
+    
     def cleanData(self, bookURLs):
         wordTokens = []
         sentTokens = []
@@ -31,7 +57,7 @@ class data:
                         rawbook += ' '
             else:
                 raise ValueError("Invalid file type. Must be 'csv', 'url', or 'text'.")
-
+                
             rawbook =  re.sub(r'\r*\n', " ", rawbook)
             rawbook = re.sub(r' +', " ", rawbook)
             rawbook = rawbook.replace('”','"').replace('“', '"').replace('``', '').replace("''", '').replace('" "', '')
@@ -51,7 +77,7 @@ class data:
         # Creating one-hot words
         wordTokens = [x.lower() for x in wordTokens] # makes all words lowercase
         allwords = wordTokens
-
+        
         ###### keeps most frequent self.numWords # of words, rest are UNK #######
         unique, counts = np.unique(allwords, return_counts=True)
         wordsAndCounts = np.asarray((unique, counts)).T
@@ -62,7 +88,7 @@ class data:
         words = list(reversed(words))
         counts = list(reversed(counts))
         wordTokens = words[:self.numWords]
-
+        
         wordTokens.append('ppaadd')
         wordTokens.append('unk')
         wordTokens = list(set(wordTokens))
@@ -72,7 +98,7 @@ class data:
 
         print('Cleaning Data Complete')
         return wordlb, wordEncoding, wordTokens, sentTokens, allwords #### wordlb, encoding, tokens, ppaadd
-
+    
     def createDicts(self):
         print('Creating Dictionaries...')
         encodeDict = {} #{'this' : 5} if the one hot is 00001000...
@@ -84,20 +110,20 @@ class data:
             decodeDict[index_of_1] = word
         print('Created dictionaries')
         return encodeDict, decodeDict
-
+       
     def getAllSentences(self):
         print('Creating all sentences...')
         allSentences = []
         for sent in self.sentTokens:
             sentOfOneHotWords = []
-            sentOfOneHotWords = [self.word_to_index(word) for word in sent]
+            sentOfOneHotWords = [self.word_to_index(word) for word in sent] 
             while len(sentOfOneHotWords) < (self.maxSentenceLength + 1):
                 sentOfOneHotWords.append(self.word_to_index('ppaadd'))
             sentOfOneHotWords = sentOfOneHotWords[:(self.maxSentenceLength)]
             allSentences.append(sentOfOneHotWords)
         print('Done creating sentences')
         return allSentences
-
+              
     def word_to_index(self, word):
         if word in self.encodeDict:
             return self.encodeDict[word]
@@ -108,10 +134,10 @@ class data:
     def index_to_onehot(self, index):
         onehot = np.append(np.append(np.zeros(index), 1), np.zeros(self.num_unique_words - (index+1)))
         onehot = onehot.reshape(1, len(onehot))
-        return onehot
-
+        return onehot 
+    
     def getSentence(self, sentenceIndex):
-        if sentenceIndex > len(self.allSentences):
+        if sentenceIndex >= len(self.allSentences):
             raise ValueError("Sentence index is greater number of sentences in corpus")
         return(self.allSentences[sentenceIndex])
 
@@ -139,11 +165,12 @@ class data:
         if type(word) == str: # 'START', 'END', 'PAD'
             return word
         return(self.wordlb.inverse_transform(word)[0])
-
+    
     def one_hot_to_word(self, onehot):
         return self.wordlb.inverse_transform(onehot)[0]
-
+    
     def one_hot_sentence_to_sentence(self, sent):
+        sent = np.expand_dims(sent, axis=1)
         real = [self.one_hot_to_word(word) for word in sent]
 #         for word in sent:
 #             real.append(self.one_hot_to_word(word))
@@ -153,10 +180,10 @@ class data:
     def getBatch(self, numSentences):
         batch = []
         for i in range(numSentences):
-            rand = np.random.random_integers(len(self.allSentences))
+            rand = np.random.random_integers(len(self.allSentences)-1)
             batch.append(self.getOneHotSentence(rand))
-        return batch
-
+        return np.array(batch).reshape((numSentences, self.maxSentenceLength, self.numWords+2))
+    
     def __init__(self, bookURLs, textOrUrl, numWords, maxLength, encodeDict=None, decodeDict=None): #"text" or "url" for textOrUrl
         self.textOrUrl = textOrUrl
         self.numWords = numWords
