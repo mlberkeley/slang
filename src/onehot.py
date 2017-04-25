@@ -1,3 +1,18 @@
+import numpy as np
+import nltk, pprint
+from nltk import word_tokenize
+from nltk.tokenize import sent_tokenize
+from urllib.request import urlopen
+from sklearn.preprocessing import OneHotEncoder
+from sklearn import preprocessing
+import re
+import time
+import pickle
+import unicodedata
+import matplotlib.pyplot as plt
+from pylab import rcParams
+import csv
+
 class data:
 
     def cleanData(self, bookURLs):
