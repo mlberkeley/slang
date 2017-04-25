@@ -31,7 +31,7 @@ def demo():
     while True:
         print("Getting random sentence...")
         sentence_num = np.random.randint(0, len(encodings))
-        true_sentence = text.getSentence(sentence_num)
+        true_sentence = text.getOneHotSentence(sentence_num)
         encoding = encodings[sentence_num]
         recovered_sentence = vsem.decode(encoding)
 
