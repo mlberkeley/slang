@@ -96,7 +96,8 @@ class VSEM(model.Model):
 
     def train(self, batch, step, params, write_summaries=False):
         batch_size = batch.shape[0]
-        decode_in = np.concatenate((np.zeros((batch_size, 1, batch.shape[2])), batch[:, :-1, :]), axis=1)
+        #decode_in = np.concatenate((np.zeros((batch_size, 1, batch.shape[2])), batch[:, :-1, :]), axis=1)
+        decode_in = np.zeros(batch.shape)
         feed = { self.keep_prob:params['keep_prob'],
                  self.batch_size:batch_size,
                  self.kl_alpha:min(params['kl_alpha_rate']*step, 1.0),
@@ -130,10 +131,13 @@ class VSEM(model.Model):
                  self.z_input:z,
                  self.x_p:decode_in,
                  self.is_decode:True }
+        pred = self.sess.run(self.pred, feed_dict=feed)
+        """
         for i in range(seq_len):
             pred = self.sess.run(self.pred, feed_dict=feed)
             if i < seq_len - 1:
                 feed[self.x_p][:, i+1, :] = pred[:, i+1, :]
+        """
         return pred[0,:,:]
 
 
