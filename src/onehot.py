@@ -9,7 +9,6 @@ import re
 import time
 import pickle
 import unicodedata
-import matplotlib.pyplot as plt
 from pylab import rcParams
 import csv
 
@@ -126,7 +125,7 @@ class data:
         return onehot
 
     def getSentence(self, sentenceIndex):
-        if sentenceIndex > len(self.allSentences):
+        if sentenceIndex >= len(self.allSentences):
             raise ValueError("Sentence index is greater number of sentences in corpus")
         return(self.allSentences[sentenceIndex])
 
@@ -159,6 +158,7 @@ class data:
         return self.wordlb.inverse_transform(onehot)[0]
 
     def one_hot_sentence_to_sentence(self, sent):
+        sent = np.expand_dims(sent, axis=1)
         real = [self.one_hot_to_word(word) for word in sent]
 #         for word in sent:
 #             real.append(self.one_hot_to_word(word))
@@ -168,9 +168,9 @@ class data:
     def getBatch(self, numSentences):
         batch = []
         for i in range(numSentences):
-            rand = np.random.random_integers(len(self.allSentences))
+            rand = np.random.random_integers(len(self.allSentences)-1)
             batch.append(self.getOneHotSentence(rand))
-        return batch
+        return np.array(batch).reshape((numSentences, self.maxSentenceLength, self.numWords+2))
 
     def __init__(self, bookURLs, textOrUrl, numWords, maxLength, encodeDict=None, decodeDict=None): #"text" or "url" for textOrUrl
         self.textOrUrl = textOrUrl
