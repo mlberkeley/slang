@@ -6,7 +6,7 @@ from vsem import VSEM
 # BEFORE RUNNING THIS, RUN encode_text(["../data/sentence5.csv"], "csv", save_name="sentence5", save=True)
 
 ENCODINGSDIR = "./"
-ENCODINGSNAME = "sentence5"
+ENCODINGSNAME = "sentence5_1000"
 TEXTSOURCES = ["../data/sentence5.csv"]
 TEXTTYPE = "csv"
 VOCABSIZE = 3700
