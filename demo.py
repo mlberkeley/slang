@@ -41,10 +41,15 @@ def demo():
         print("Original or recovered:")
         if np.random.rand() > 0.5:
             print(true_sentence_string)
+            input()
+            print("That was the original sentence.")
+            print("Recovered was:")
+            print(recovered_sentence_string)
         else:
             print(recovered_sentence_string)
-
-        input()
+            print("That was the recovered sentence.")
+            print("Original was:")
+            print(true_sentence_string)
 
 def one_hot_sentence_to_string(text, sentence):
     string = ""
