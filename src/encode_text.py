@@ -7,9 +7,9 @@ from vsem import VSEM
 DEFAULT_PARAMS = { 'load':True,
                    'load_idx':7,
                    'dir':'./',
-                   'encode_hid':100,
-                   'latent_dims':100,
-                   'decode_hid':100,
+                   'encode_hid':512,
+                   'latent_dims':256,
+                   'decode_hid':512,
                    # Don't change anything below this line.
                    'keep_prob':1,
                    'batch_size':1,

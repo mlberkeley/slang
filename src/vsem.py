@@ -22,8 +22,7 @@ class VSEM(model.Model):
                 encode_lstm = tf.contrib.rnn.LSTMCell(params['encode_hid'])
                 encode_lstm_dropout = tf.contrib.rnn.DropoutWrapper(encode_lstm, self.keep_prob)
                 encode_init = encode_lstm.zero_state(self.batch_size, tf.float32)
-                encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_lstm, self.x,
-                                                                 initial_state = encode_init)
+                encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_lstm, self.x, initial_state = encode_init)
                 h = encode_outputs[:, -1, :]
             with tf.variable_scope('mean'):
                 self.weights['w_mu'] = tf.get_variable('w_mu', [params['encode_hid'], params['latent_dims']],
