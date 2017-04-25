@@ -3,11 +3,10 @@ import numpy as np
 import tensorflow as tf
 import model
 from vsem import VSEM
-from onehot import data
 
 DEFAULT_PARAMS = { 'load':True,
                    'load_idx':7,
-                   'dir':'../vsem_models/test',
+                   'dir':'./',
                    'encode_hid':100,
                    'latent_dims':100,
                    'decode_hid':100,
@@ -18,8 +17,12 @@ DEFAULT_PARAMS = { 'load':True,
                    'learning_rate':1e-4}
 
 # encode a single text
-def encode_text(bookURLs, format, seq_len, encodeDict, decodeDict, params=DEFAULT_PARAMS, save_name='', save=False):
-    text = data(bookURLs, format, len(decodeDict), seq_len, encodeDist, decodeDict)
+def encode_text(sources, format, seq_len=15, encodeDict=None, decodeDict=None, params=DEFAULT_PARAMS, save_name='', save=False):
+    if decodeDict is not None:
+        text = data(sources, format, len(decodeDict), seq_len, encodeDict, decodeDict)
+    else:
+        text = data(sources, format, 3700, seq_len, encodeDict, decodeDict)
+
     textLen = len(text.allSentences)
 
     onehot_text = []
@@ -27,7 +30,7 @@ def encode_text(bookURLs, format, seq_len, encodeDict, decodeDict, params=DEFAUL
         onehot_text.append(text.getOneHotSentence(i))
     onehot_text = np.array(onehot_text)
 
-    params['vocab_size'] = len(decodeDict)
+    params['vocab_size'] = len(text.decodeDict)
     params['seq_len'] = seq_len
 
     vsem = VSEM(params)
