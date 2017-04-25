@@ -26,16 +26,21 @@ def encode_text(sources, format, seq_len=15, encodeDict=None, decodeDict=None, p
     textLen = len(text.allSentences)
 
     onehot_text = []
-    for i in range(textLen):
-        onehot_text.append(text.getOneHotSentence(i))
-    onehot_text = np.array(onehot_text)
+    for i in range(5): #textLen):
+        sentence = []
+        for word in text.getOneHotSentence(i):
+            sentence.append(np.array(word[0], dtype=np.float32))
+        onehot_text.append(np.array(sentence, dtype=np.float32))
+    onehot_text = np.array(onehot_text, dtype=np.float32)
 
     params['vocab_size'] = len(text.decodeDict)
     params['seq_len'] = seq_len
 
     vsem = VSEM(params)
 
-    book_mu, book_log_var = vsem.sess.run([mu, log_var], feed_dict = {x: onehot_text})
+    book_mu, book_log_var = vsem.sess.run([vsem.mu, vsem.log_var], feed_dict = {vsem.x:onehot_text,
+                                                                                vsem.keep_prob:1.0,
+                                                                                vsem.batch_size:1})
 
     if save:
         np.save(save_name + "_mu.npy", book_mu[0,:])
