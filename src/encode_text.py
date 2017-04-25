@@ -3,11 +3,10 @@ import numpy as np
 import tensorflow as tf
 import model
 from vsem import VSEM
-from onehot import data
 
 DEFAULT_PARAMS = { 'load':True,
                    'load_idx':7,
-                   'dir':'../vsem_models/test',
+                   'dir':'./',
                    'encode_hid':100,
                    'latent_dims':100,
                    'decode_hid':100,

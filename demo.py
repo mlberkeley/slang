@@ -2,8 +2,10 @@ import numpy as np
 import tensorflow as tf
 from onehot import data
 
+# BEFORE RUNNING THIS, RUN encode_text(["../data/sentence5.csv"], "csv", save_name="sentence5", save=True)
+
 ENCODINGSDIR = "./"
-ENCODINGSNAME = "text"
+ENCODINGSNAME = "sentence5"
 PARAMS = { 'load':True,
            'load_idx':7,
            'dir':'./',
