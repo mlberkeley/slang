@@ -172,6 +172,38 @@ class data:
             batch.append(self.getOneHotSentence(rand))
         return np.array(batch).reshape((numSentences, self.maxSentenceLength, self.numWords+2))
 
+    # returns a one hot of 5 sentences that corresponds to 1 story
+    def getRandomStoryOneHot(self):
+        batch = []
+        rand = np.random.random_integers(len(self.allSentences))
+        rand = rand - (rand % 5) - 1
+        for i in range(rand, rand+5):
+            batch.append(self.getOneHotSentence(i))
+        return batch
+    
+    # returns a string of 5 sentences that corresponds to 1 story
+    def getRandomStory(self): 
+        batch = []
+        story = ''
+        rand = np.random.random_integers(len(self.allSentences))
+        rand = rand - (rand % 5) - 1
+        for i in range(rand, rand+5):
+            sent = self.one_hot_sentence_to_sentence(self.getOneHotSentence(i))
+            text = ''
+            i = 0
+            while i < len(sent):
+                word = sent[i]
+                if word == "ppaadd":
+                    break
+                text += word
+                text += ' '
+                i += 1
+            text = text[:-2]
+            text += "."
+            story += text
+            story += ' ' 
+        return story
+
     def __init__(self, bookURLs, textOrUrl, numWords, maxLength, encodeDict=None, decodeDict=None): #"text" or "url" for textOrUrl
         self.textOrUrl = textOrUrl
         self.numWords = numWords
