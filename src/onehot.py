@@ -1,19 +1,23 @@
-import numpy as np
-import nltk, pprint
-from nltk import word_tokenize
-from nltk.tokenize import sent_tokenize
-from urllib.request import urlopen
-from sklearn.preprocessing import OneHotEncoder
-from sklearn import preprocessing
-import re
-import time
-import pickle
-import unicodedata
-from pylab import rcParams
-import csv
-
 class data:
-
+    def __init__(self, bookURLs, textOrUrl, numWords, maxLength, encodeDict=None, decodeDict=None): #"text" or "url" for textOrUrl
+        self.textOrUrl = textOrUrl
+        self.numWords = numWords
+        self.maxSentenceLength = maxLength
+        self.bookURLs = bookURLs
+        self.wordlb, self.wordEncoding, self.wordTokens, self.sentTokens, self.allWords = self.cleanData(self.bookURLs)
+        self.encodeDict = {} #{'this' : 5} if the one hot is 00001000...
+        self.decodeDict = {} # {5: 'this}
+        if ((encodeDict != None) and (decodeDict != None)):
+            self.encodeDict, self.decodeDict = encodeDict, decodeDict
+        else:
+            self.encodeDict, self.decodeDict = self.createDicts()
+        self.num_unique_words = len(self.decodeDict)
+        self.allSentences = self.getAllSentences()
+        print("Words:", len(self.allWords))
+        print("Unique words:", self.wordEncoding.shape[0])
+        print("Sentences:", len(self.allSentences))
+        print('Data initialized')
+        
     def cleanData(self, bookURLs):
         wordTokens = []
         sentTokens = []
@@ -57,8 +61,6 @@ class data:
             wordTokens += word_tokenize(rawbook)
             sentTokens += sent_tokenize(rawbook)
         print("Cleaning sentences...")
-#         for i in range(len(sentTokens)):
-#             sentTokens[i] = word_tokenize(sentTokens[i])
         sentTokens = [word_tokenize(word) for word in sentTokens]
         print("Finished Cleaning")
 
@@ -118,12 +120,6 @@ class data:
         else:
             return self.encodeDict['unk']
 
-    # maps index of the 1 to actual onehot encoding
-    def index_to_onehot(self, index):
-        onehot = np.append(np.append(np.zeros(index), 1), np.zeros(self.num_unique_words - (index+1)))
-        onehot = onehot.reshape(1, len(onehot))
-        return onehot
-
     def getSentence(self, sentenceIndex):
         if sentenceIndex >= len(self.allSentences):
             raise ValueError("Sentence index is greater number of sentences in corpus")
@@ -137,6 +133,14 @@ class data:
             onehotSentence.append(self.getWord(sentenceIndex, i))
         return(onehotSentence)
 
+    # Returns sentence with all words in as indices of 1 in onehot
+    def getIndexSentence(self, sentenceIndex):
+        sentence = self.getSentence(sentenceIndex)
+        indexSentence = []
+        for i in range(len(sentence)):
+            indexSentence.append(self.getIndexWord(sentenceIndex, i))
+        return(indexSentence)
+
     # Returns [[00...000]], a one-hot encoded word at specified sentence and word index in a nested array (for decoding)
     def getWord(self, sentenceIndex, wordIndex):
         if wordIndex > self.maxSentenceLength+1:
@@ -146,6 +150,17 @@ class data:
             return word
         else:
             return(self.index_to_onehot(self.getSentence(sentenceIndex)[wordIndex])) # returns [[000...000]]
+
+
+    # Returns an int representing index of 1 in one hot encoding
+    def getIndexWord(self, sentenceIndex, wordIndex):
+        if wordIndex > self.maxSentenceLength+1:
+            raise ValueError("Word index is greater than max sentence length")
+        word = self.allSentences[sentenceIndex][wordIndex]
+        if type(word) != int:
+            return word
+        else:
+            return(self.getSentence(sentenceIndex)[wordIndex]) 
 
     # Decodes word at specified sentence and word indicies back into English
     def decode(self, sentenceIndex, wordIndex):
@@ -157,20 +172,46 @@ class data:
     def one_hot_to_word(self, onehot):
         return self.wordlb.inverse_transform(onehot)[0]
 
+    # Converts one hot sentence into english
     def one_hot_sentence_to_sentence(self, sent):
         sent = np.expand_dims(sent, axis=1)
         real = [self.one_hot_to_word(word) for word in sent]
-#         for word in sent:
-#             real.append(self.one_hot_to_word(word))
-        return real
+        return np.array(real).reshape((self.maxSentenceLength))
+    
+    # Converts index of 1 in onehot into actual onehot
+    def index_to_onehot(self, index):
+        onehot = np.append(np.append(np.zeros(index), 1), np.zeros(self.num_unique_words - (index+1)))
+        onehot = onehot.reshape(1, len(onehot))
+        return onehot
 
-    # returns numSentences random sentences with words in onehot
+    # Converts sentence full of indices into onehot
+    def index_sent_to_one_hot(self, sent):
+        sent = np.expand_dims(sent, axis=1)
+        real = [self.index_to_onehot(index) for index in sent]
+        real = [x[0] for x in real]
+        return real
+    
+    # Converts sentence full of indices into words
+    def index_sent_to_sent(self, sent):
+        onehot = self.index_sent_to_one_hot(sent)
+        return np.array(self.one_hot_sentence_to_sentence(onehot)).reshape((self.maxSentenceLength))
+
+    # Returns numSentences random sentences with words in onehot
     def getBatch(self, numSentences):
         batch = []
         for i in range(numSentences):
             rand = np.random.random_integers(len(self.allSentences)-1)
             batch.append(self.getOneHotSentence(rand))
         return np.array(batch).reshape((numSentences, self.maxSentenceLength, self.numWords+2))
+
+    # Returns numSentences random sentences with words as indices
+    def getIndexBatch(self, numSentences):
+        batch = []
+        for i in range(numSentences):
+            rand = np.random.random_integers(len(self.allSentences)-1)
+            batch.append(self.getIndexSentence(rand))
+        return np.array(batch).reshape((numSentences, self.maxSentenceLength))
+
 
     # returns a one hot of 5 sentences that corresponds to 1 story
     def getRandomStoryOneHot(self):
@@ -188,7 +229,7 @@ class data:
         rand = np.random.random_integers(len(self.allSentences))
         rand = rand - (rand % 5) - 1
         for i in range(rand, rand+5):
-            sent = self.one_hot_sentence_to_sentence(self.getOneHotSentence(i))
+            sent = self.one_hot_sentence_to_sentence(np.array(self.getOneHotSentence(i)).reshape(self.maxSentenceLength, self.numWords+2))
             text = ''
             i = 0
             while i < len(sent):
@@ -203,22 +244,3 @@ class data:
             story += text
             story += ' ' 
         return story
-
-    def __init__(self, bookURLs, textOrUrl, numWords, maxLength, encodeDict=None, decodeDict=None): #"text" or "url" for textOrUrl
-        self.textOrUrl = textOrUrl
-        self.numWords = numWords
-        self.maxSentenceLength = maxLength
-        self.bookURLs = bookURLs
-        self.wordlb, self.wordEncoding, self.wordTokens, self.sentTokens, self.allWords = self.cleanData(self.bookURLs)
-        self.encodeDict = {} #{'this' : 5} if the one hot is 00001000...
-        self.decodeDict = {} # {5: 'this}
-        if ((encodeDict != None) and (decodeDict != None)):
-            self.encodeDict, self.decodeDict = encodeDict, decodeDict
-        else:
-            self.encodeDict, self.decodeDict = self.createDicts()
-        self.num_unique_words = len(self.decodeDict)
-        self.allSentences = self.getAllSentences()
-        print("Words:", len(self.allWords))
-        print("Unique words:", self.wordEncoding.shape[0])
-        print("Sentences:", len(self.allSentences))
-        print('Data initialized')
