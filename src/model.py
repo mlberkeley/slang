@@ -2,13 +2,13 @@ import os
 import numpy as np
 import tensorflow as tf
 
-"""Abstract class from which all models inherit from. Provides common functionality shared 
+"""Abstract class from which all models inherit from. Provides common functionality shared
    across all models, including saving, loading, summarizing, and initializing."""
 class Model(object):
     def __init__(self, params, gpu_fraction=0.3):
         self.params = params
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=gpu_fraction)
-        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) 
+        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
         self.weights = {}
 
         print('Constructing model')
@@ -78,7 +78,7 @@ class Model(object):
     def load(self):
         if not os.path.exists(self.ckpt_dir):
             raise IOError('The specified checkpoint directory does not exist.')
-        latest_ckpt = tf.train.latest_checkpoint(self.dir)
+        latest_ckpt = tf.train.latest_checkpoint(self.ckpt_dir)
         if latest_ckpt:
             print(latest_ckpt)
             self.saver.restore(self.sess, latest_ckpt)
@@ -91,4 +91,3 @@ class Model(object):
         if not os.path.exists(self.ckpt_dir):
             os.makedirs(self.ckpt_dir)
         self.saver.save(self.sess, self.ckpt_dir, global_step=global_step)
-

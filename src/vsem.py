@@ -19,14 +19,12 @@ class VSEM(model.Model):
         with tf.variable_scope('encoder'):
             self.x_onehot = tf.one_hot(self.x, self.params['vocab_size'], axis=-1)
             with tf.variable_scope('lstm'):
-                """
                 encode_lstm = tf.contrib.rnn.LSTMCell(self.params['encode_hid'])
                 encode_lstm_dropout = tf.contrib.rnn.DropoutWrapper(encode_lstm, self.keep_prob)
                 encode_init = encode_lstm.zero_state(self.batch_size, tf.float32)
                 encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_lstm, self.x_onehot,
                                                                  initial_state = encode_init)
                 h = encode_outputs[:, -1, :]
-                """
                 init_c = tf.zeros([self.batch_size, self.params['encode_hid']])
                 init_h = tf.zeros([self.batch_size, self.params['encode_hid']])
                 encode_outputs, encode_final = self.lstm_layer(init_c, init_h, self.params['seq_len'],

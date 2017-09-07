@@ -13,6 +13,26 @@ import unicodedata
 
 class SentenceFormatter: # initialize with data(["bookURL1", "bookURL2"...])
     
+class data:
+    def __init__(self, bookURLs, textOrUrl, numWords, maxLength, encodeDict=None, decodeDict=None): #"text" or "url" for textOrUrl
+        self.textOrUrl = textOrUrl
+        self.numWords = numWords
+        self.maxSentenceLength = maxLength
+        self.bookURLs = bookURLs
+        self.wordlb, self.wordEncoding, self.wordTokens, self.sentTokens, self.allWords = self.cleanData(self.bookURLs)
+        self.encodeDict = {} #{'this' : 5} if the one hot is 00001000...
+        self.decodeDict = {} # {5: 'this}
+        if ((encodeDict != None) and (decodeDict != None)):
+            self.encodeDict, self.decodeDict = encodeDict, decodeDict
+        else:
+            self.encodeDict, self.decodeDict = self.createDicts()
+        self.num_unique_words = len(self.decodeDict)
+        self.allSentences = self.getAllSentences()
+        print("Words:", len(self.allWords))
+        print("Unique words:", self.wordEncoding.shape[0])
+        print("Sentences:", len(self.allSentences))
+        print('Data initialized')
+        
     def cleanData(self, bookURLs):
         wordTokens = ['ppaadd']
         sentTokens = []
@@ -106,6 +126,17 @@ class SentenceFormatter: # initialize with data(["bookURL1", "bookURL2"...])
         else:
             return(self.index_to_onehot(self.getSentence(sentenceIndex)[wordIndex])) # returns [[000...000]]
 
+
+    # Returns an int representing index of 1 in one hot encoding
+    def getIndexWord(self, sentenceIndex, wordIndex):
+        if wordIndex > self.maxSentenceLength+1:
+            raise ValueError("Word index is greater than max sentence length")
+        word = self.allSentences[sentenceIndex][wordIndex]
+        if type(word) != int:
+            return word
+        else:
+            return(self.getSentence(sentenceIndex)[wordIndex]) 
+
     # Decodes word at specified sentence and word indicies back into English
     def decode(self, sentenceIndex, wordIndex):
         word = self.getWord(sentenceIndex, wordIndex)
@@ -121,8 +152,13 @@ class SentenceFormatter: # initialize with data(["bookURL1", "bookURL2"...])
         for word in sent:
             real.append(self.one_hot_to_word(np.expand_dims(word, axis=0)))
         return real
+    
+    # Converts sentence full of indices into words
+    def index_sent_to_sent(self, sent):
+        onehot = self.index_sent_to_one_hot(sent)
+        return np.array(self.one_hot_sentence_to_sentence(onehot)).reshape((self.maxSentenceLength))
 
-    # returns numSentences random sentences with words in onehot
+    # Returns numSentences random sentences with words in onehot
     def getBatch(self, numSentences):
         batch = []
         for i in range(numSentences):
