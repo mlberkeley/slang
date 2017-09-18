@@ -1,7 +1,7 @@
 import numpy as np
 
 from vsem import VSEM
-from onehot import data
+from story_parse import Parser
 
 params = { 'load':False,
            'load_idx':3,
@@ -16,7 +16,7 @@ params = { 'load':False,
            'kl_alpha_rate':5e-6,
            'batch_size':50 }
 
-sent = data(["../data/sentence5.csv"], "csv", params['vocab_size'] - 2, params['seq_len'])
+sent = Parser(["../data/sentence5.csv"], "csv", params['vocab_size'] - 2, params['seq_len'])
 vsem = VSEM(params)
 
 def copy_sentence(params, low, high):

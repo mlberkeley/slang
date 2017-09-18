@@ -1,15 +1,9 @@
 import numpy as np
-import nltk, pprint
 from nltk import word_tokenize
 from nltk.tokenize import sent_tokenize
 from urllib.request import urlopen
-from sklearn.preprocessing import OneHotEncoder
-from sklearn import preprocessing
 import re
-import time
-import pickle
 import unicodedata
-from pylab import rcParams
 import csv
 
 PAD_WORD = 'ppaadd'
@@ -17,7 +11,14 @@ UNK = 'unk'
 
 class Parser:
 
-    def clean(self, book_urls):
+    """
+    Read through the specified books and extract a cleaned dataset of stories and sentences
+
+    :param book_urls: URLs or path to story files to parse
+    :return: tuple of word tokens, sentences tokens, all words in vocabulary, and stories, all as
+             lists containing the individual elements
+    """
+    def _clean(self, book_urls):
         word_tokens = []
         sent_tokens = []
         lst = []
@@ -91,6 +92,13 @@ class Parser:
         print('Cleaning Data Complete')
         return word_tokens, sent_tokens, all_words, stories
 
+    """
+    Creates the encoding and decoding dictionaries, where the encoding dictionary contains the
+    mapping from word to one-hot index, and the decoding dictionary contains the mapping from
+    one-hot index to word
+    
+    :return: Tuple containing the encoding dictionary and decoding dictionary, in that order
+    """
     def create_dicts(self):
         print('Creating Dictionaries...')
         encode_dict = {} #{'this' : 5} if the one hot is 00001000...
@@ -103,7 +111,12 @@ class Parser:
         print('Created dictionaries')
         return encode_dict, decode_dict
 
-    def get_all_sentences(self):
+    """
+    Collects all sentences parsed by the parser with words represented as one-hot indices
+
+    :return: List containing all sentences, each of which is a list of one-hot indices
+    """
+    def _get_all_sentences(self):
         print('Creating all sentences...')
         all_sentences = []
         for sent in self.sent_tokens:
@@ -115,7 +128,13 @@ class Parser:
         print('Done creating sentences')
         return all_sentences
 
-    def get_all_stories(self):
+    """
+    Collects all sentences parsed by the parser with each sentence in the story containing words
+    represented as one-hot indices
+
+    :return: List containing all sentences, each of which is a list of one-hot indices
+    """
+    def _get_all_stories(self):
         print('Collecting all stories...')
         all_stories = []
         for story in self.stories:
@@ -123,54 +142,119 @@ class Parser:
         print('Done collecting stories')
         return all_stories
 
+    """
+    Returns the encoded index of the word; if the word is not in the encoding dictionary, returns
+    the unk index
+
+    :param word: String word to be converted into an index
+    :return: The index of the one-hot vector associated with the given word
+    """
     def word_to_index(self, word):
         if word in self.encode_dict:
             return self.encode_dict[word]
         else:
             return self.encode_dict[UNK]
 
+    """
+    Returns the word that the given index encodes; if the index is not in the encoding dictionary,
+    returns the 'UNK' word
+
+    :param index: Integer index to be converted into a word
+    :return: The word associated with the given one-hot vector index
+    """
     def index_to_word(self, index):
         if index in self.decode_dict:
             return self.decode_dict[index]
         else:
             return UNK
 
+    """
+    Retrieves the specified sentence stored in the dataset
+
+    :param sentence_index: The index of the sentence in the dataset to be retrieved
+    :return: The specified sentence represented as a list of word indices
+    """
     def get_sentence(self, sentence_index):
         if sentence_index >= len(self.all_sentences):
             raise ValueError("Sentence index is greater number of sentences in corpus")
         return self.all_sentences[sentence_index]
 
+    """
+    Retrieves the specified word stored in the dataset
+
+    :param sentence_index: The index of the sentence that the word is contained in
+    :param word_index: The index of the word within the given sentence
+    :return: The specified word in one-hot vector index notation
+    """
     def get_word(self, sentence_index, word_index):
         if word_index > self.max_sentence_length+1:
             raise ValueError("Word index is greater than max sentence length")
         return self.all_sentences[sentence_index][word_index]
 
+    """
+    Takes a sentence with words represented as indicies and converts it into a sentence with
+    words as strings
+
+    :param sent: Sentence represented as a list of integers
+    :return: Sentence represented as a list of string words
+    """
     def index_sentence_to_sentence(self, sent):
         return [self.index_to_word(index) for index in sent]
 
+    """
+    Converts a sentence with words as strings into the equivent sentence with index word
+    representation
+
+    :param sent: The sentence as a list of word strings to be converted into an index sentence
+    :return: The sentence with words represented as indices, padded or clipped to the appropriate
+             length
+    """
     def sentence_to_index_sentence(self, sent):
         index_sent = [self.word_to_index(word) for word in word_tokenize(sent.lower())]
         while len(index_sent) <= self.max_sentence_length:
             index_sent.append(self.word_to_index(PAD_WORD))
         return index_sent[:self.max_sentence_length]
 
+    """
+    Creates a sentence filled with pad words
+
+    :return: A sentence containing only the index representation of the pad word
+    """
     def pad_sentence(self):
         return [self.word_to_index(PAD_WORD) for _ in range(self.max_sentence_length)]
 
-    # returns numSentences random sentences with words in onehot
-    def get_batch(self, numSentences, start_index, end_index):
+    """
+    Retrieves a random batch of sentences from the database
+
+    :param num_sentences: Number of sentences to retrieve
+    :param start_index: The earliest index of sentences to retrieve
+    :param end_index: The latest index of sentences to retrieve
+    :return: A batch of sentences in index representation
+    """
+    def get_batch(self, num_sentences, start_index, end_index):
         batch = []
-        for i in range(numSentences):
+        for i in range(num_sentences):
             rand = np.random.random_integers(start_index, end_index)
-            batch.append(self.getSentence(rand))
+            batch.append(self.get_sentence(rand))
         return np.array(batch)
 
+    """
+    Retrieve a random story from the dataset
+
+    :param threshold: The maximum fraction of the index to retrieve
+    :return: A random story as a list containing sentences, each of which is represented as a list
+             of words in indexed format
+    """
     def get_random_index_story(self, threshold=1):
         marker = int(threshold*(len(self.all_stories)-1))
         rand = np.random.random_integers(marker)
         return self.all_stories[rand]
 
-    # returns a string of 5 sentences that corresponds to 1 story
+    """
+    Retrieve a random story in human readable format
+
+    :return: A random story presented as a single string with all sentences appended together
+    """
     def get_random_story(self): 
         story = ''
         rand = np.random.random_integers(len(self.all_stories))
@@ -198,7 +282,7 @@ class Parser:
         self.max_sentence_length = max_length
         self.book_urls = book_urls
         self.word_tokens, self.sent_tokens, self.all_words, self.stories = \
-            self.clean(self.book_urls)
+            self._clean(self.book_urls)
         self.encode_dict = {} #{'this' : 5} if the one hot is 00001000...
         self.decode_dict = {} # {5: 'this}
         if ((encode_dict != None) and (decode_dict != None)):
@@ -206,8 +290,8 @@ class Parser:
         else:
             self.encode_dict, self.decode_dict = self.create_dicts()
         self.num_unique_words = len(self.decode_dict)
-        self.all_sentences = self.get_all_sentences()
-        self.all_stories = self.get_all_stories()
+        self.all_sentences = self._get_all_sentences()
+        self.all_stories = self._get_all_stories()
         print("Words:", len(self.all_words))
         print("Unique words:", len(self.encode_dict.keys()))
         print("Sentences:", len(self.all_sentences))
