@@ -27,8 +27,9 @@ class VSEM(model.Model):
                 h = encode_outputs[:, -1, :]
                 init_c = tf.zeros([self.batch_size, self.params['encode_hid']])
                 init_h = tf.zeros([self.batch_size, self.params['encode_hid']])
-                encode_outputs, encode_final = self.lstm_layer(init_c, init_h, self.params['seq_len'],
-                                                          'encode', self.x_onehot)
+                encode_outputs, encode_final = self.lstm_layer(init_c, init_h,
+                                                               self.params['seq_len'],
+                                                               'encode', self.x_onehot)
                 h = encode_outputs[:, -1, :]
             with tf.variable_scope('mean'):
                 w_mu_shape = [self.params['encode_hid'], self.params['latent_dims']]
@@ -59,11 +60,13 @@ class VSEM(model.Model):
                 self.weights['w_z'] = tf.get_variable('w_z', w_z_shape, initializer=xavier)
                 self.weights['b_z'] = tf.get_variable('b_z', self.params['decode_hid'],
                                                       initializer=tf.zeros_initializer())
-                init_c = tf.tanh(tf.matmul(self.z_decode, self.weights['w_z']) + self.weights['b_z'])
+                init_c = tf.tanh(tf.matmul(self.z_decode, self.weights['w_z']) +
+                                                          self.weights['b_z'])
                 init_h = tf.zeros([self.batch_size, self.params['decode_hid']])
                 empty = tf.zeros([self.batch_size, self.params['seq_len'], 1])
-                decode_outputs, decode_final = self.lstm_layer(init_c, init_h, self.params['seq_len'],
-                                                          'decode', empty)
+                decode_outputs, decode_final = self.lstm_layer(init_c, init_h,
+                                                               self.params['seq_len'],
+                                                               'decode', empty)
             with tf.variable_scope('pred'):
                 w_out_shape = [self.params['decode_hid'], self.params['vocab_size']]
                 self.weights['w_out'] = tf.get_variable('w_out', w_out_shape, initializer=xavier)
@@ -71,7 +74,8 @@ class VSEM(model.Model):
                                                         initializer=tf.zeros_initializer())
                 out_flat = tf.reshape(decode_outputs, [-1, self.params['decode_hid']])
                 y_flat = tf.matmul(out_flat, self.weights['w_out']) + self.weights['b_out']
-                self.y_ = tf.reshape(y_flat, [-1, self.params['seq_len'], self.params['vocab_size']])
+                self.y_ = tf.reshape(y_flat, [-1, self.params['seq_len'],
+                                              self.params['vocab_size']])
                 self.pred = tf.nn.softmax(self.y_)
                 pred_conf = tf.reduce_mean(tf.reduce_max(self.pred, 2))
                 tf.summary.scalar('prediction_confidence', pred_conf)
