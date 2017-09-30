@@ -3,9 +3,10 @@ import os
 import numpy as np
 import tensorflow as tf
 
-"""Abstract class from which all models inherit from. Provides common functionality shared
-   across all models, including saving, loading, summarizing, and initializing."""
 class Model(abc.ABC):
+    """Abstract class from which all models inherit from. Provides common functionality shared
+       across all models, including saving, loading, summarizing, and initializing."""
+
     def __init__(self, params, gpu_fraction=0.3):
         self.params = params
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=gpu_fraction)
@@ -37,28 +38,29 @@ class Model(abc.ABC):
             self.writer = tf.summary.FileWriter(self.log_dir, self.sess.graph)
             self.sess.run(tf.global_variables_initializer())
 
-    @abstractmethod
+    @abc.abstractmethod
     def construct(self):
-    """
-    Builds the TensorFlow computation graph for the model.
-    """
+        """
+        Builds the TensorFlow computation graph for the model.
+        """
         raise NotImplementedError
 
-    @abstractmethod
+    @abc.abstractmethod
     def train(self, batch, step, write_summaries=False):
-    """
-    Performs a single minibatch training step on the model.
-    :param batch: A numpy array containing a single batch of input data
-    :param step: An integer representing the iteration number of the training step
-    :param write_summaries: A boolean toggle for writing Tensorboard summaries for the current
-                            training step
-    """
+        """
+        Performs a single minibatch training step on the model.
+
+        :param batch: A numpy array containing a single batch of input data
+        :param step: An integer representing the iteration number of the training step
+        :param write_summaries: A boolean toggle for writing Tensorboard summaries for the current
+                                training step
+        """
         raise NotImplementedError
 
     def load(self):
-    """
-    Loads the parameters of the latest saved checkpoint for the model.
-    """
+        """
+        Loads the parameters of the latest saved checkpoint for the model.
+        """
         if not os.path.exists(self.ckpt_dir):
             raise IOError('The specified checkpoint directory does not exist.')
         latest_ckpt = tf.train.latest_checkpoint(self.ckpt_dir)
@@ -70,11 +72,12 @@ class Model(abc.ABC):
             raise IOError('No checkpoints found in the specified checkpoint directory.')
 
     def save(self, global_step=None):
-    """
-    Save the current values of the parameters into a checkpoint file.
-    :param global_step: The integer representing the step value with which to save the checkpoint
-                        file as
-    """
+        """
+        Save the current values of the parameters into a checkpoint file.
+
+        :param global_step: The integer representing the step value with which to save the
+                            checkpoint file as
+        """
         print('Saving checkpoint')
         if not os.path.exists(self.ckpt_dir):
             os.makedirs(self.ckpt_dir)

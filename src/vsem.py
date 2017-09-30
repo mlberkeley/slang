@@ -2,9 +2,10 @@ import numpy as np
 import tensorflow as tf
 import model
 
-"""The Variational Sentence Encoding Model. Learns a continuous space sentence encoding using a
-seq2seq LSTM variational autoencoder."""
 class VSEM(model.Model):
+    """The Variational Sentence Encoding Model. Learns a continuous space sentence encoding using 
+    a seq2seq LSTM variational autoencoder."""
+
     def construct(self):
         self.keep_prob = tf.placeholder(tf.float32)
         self.batch_size = tf.placeholder(tf.int32)
