@@ -1,20 +1,11 @@
+import yaml
 import numpy as np
 
 from vsem import VSEM
 from story_parse import Parser
 
-params = { 'load':False,
-           'load_idx':3,
-           'dir':'../vsem_models/fivesent/model',
-           'seq_len':25,
-           'vocab_size':15002,
-           'encode_hid':256,
-           'latent_dims':128,
-           'decode_hid':256,
-           'learning_rate':1e-4,
-           'keep_prob':0.5,
-           'kl_alpha_rate':5e-6,
-           'batch_size':50 }
+with open('fivesent_vsem.yaml', 'r') as f:
+    params = yaml.safe_load(f)
 
 sent = Parser(["../data/sentence5.csv"], "csv", params['vocab_size'] - 2, params['seq_len'])
 vsem = VSEM(params)

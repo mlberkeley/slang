@@ -1,0 +1,11 @@
+load: False
+load_idx: 3
+dir: ../vsem_models/fivesent/model
+seq_len: 25
+vocab_size: 15002
+encode_hid: 256
+latent_dims: 128
+learning_rate: 0.0001
+keep_prob: 0.5
+kl_alpha_rate: 0.000005
+batch_size: 50
