@@ -1,9 +1,9 @@
 .DS_Store
-
-*.swp
-*.pyc
-*.aux
-*.log
-*.synctex.gz
-
+**/*.swp
+**/*.pyc
+**/*.aux
+**/*.log
+**/*.synctex.gz
 data/fiction
+src/checkpoints/*
+visualization/logs
