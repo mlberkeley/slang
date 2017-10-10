@@ -10,7 +10,8 @@ class VSEM(model.Model):
         self.keep_prob = tf.placeholder(tf.float32)
         self.batch_size = tf.placeholder(tf.int32)
         self.kl_alpha = tf.placeholder(tf.float32)
-        self.x = tf.placeholder(tf.int32, [None, self.params['seq_len']])
+        self.x = tf.placeholder(tf.float32, [None, self.params['seq_len'],
+                                             self.params['wordvec_dims']])
         self.is_decode = tf.placeholder(tf.bool)
         self.z_input = tf.placeholder(tf.float32, [None, self.params['latent_dims']])
         
@@ -18,12 +19,11 @@ class VSEM(model.Model):
 
         # build encoder
         with tf.variable_scope('encoder'):
-            self.x_onehot = tf.one_hot(self.x, self.params['vocab_size'], axis=-1)
             with tf.variable_scope('lstm'):
                 encode_lstm = tf.contrib.rnn.LSTMCell(self.params['encode_hid'])
                 encode_lstm_dropout = tf.contrib.rnn.DropoutWrapper(encode_lstm, self.keep_prob)
                 encode_init = encode_lstm.zero_state(self.batch_size, tf.float32)
-                encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_lstm, self.x_onehot,
+                encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_lstm, self.x,
                                                                  initial_state = encode_init)
                 h = encode_outputs[:, -1, :]
                 init_c = tf.zeros([self.batch_size, self.params['encode_hid']])
@@ -69,20 +69,14 @@ class VSEM(model.Model):
                                                                self.params['seq_len'],
                                                                'decode', empty)
             with tf.variable_scope('pred'):
-                w_out_shape = [self.params['decode_hid'], self.params['vocab_size']]
+                w_out_shape = [self.params['decode_hid'], self.params['wordvec_dims']]
                 self.weights['w_out'] = tf.get_variable('w_out', w_out_shape, initializer=xavier)
-                self.weights['b_out'] = tf.get_variable('b_out', self.params['vocab_size'],
+                self.weights['b_out'] = tf.get_variable('b_out', self.params['wordvec_dims'],
                                                         initializer=tf.zeros_initializer())
                 out_flat = tf.reshape(decode_outputs, [-1, self.params['decode_hid']])
                 y_flat = tf.matmul(out_flat, self.weights['w_out']) + self.weights['b_out']
                 self.y_ = tf.reshape(y_flat, [-1, self.params['seq_len'],
-                                              self.params['vocab_size']])
-                self.pred = tf.nn.softmax(self.y_)
-                pred_conf = tf.reduce_mean(tf.reduce_max(self.pred, 2))
-                tf.summary.scalar('prediction_confidence', pred_conf)
-                reconstr_l = tf.cast(tf.argmax(self.pred, axis=2), tf.int32)
-                acc = tf.reduce_mean(tf.cast(tf.equal(self.x, reconstr_l), tf.float32))
-                tf.summary.scalar('batch_accuracy', acc)
+                                              self.params['wordvec_dims']])
 
         # calculate loss
         with tf.variable_scope('loss'):
@@ -91,9 +85,10 @@ class VSEM(model.Model):
                 self.kl_div = tf.reduce_mean(-tf.reduce_sum(kl_div_batch, 1))
                 tf.summary.scalar('kl_divergence', self.kl_div)
             with tf.variable_scope('reconstruction'):
-                decode_losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.x,
-                                                                               logits=self.y_)
-                self.reconstr_loss = tf.reduce_sum(decode_losses)
+                xy_dot = tf.reduce_sum(tf.multiply(x, y, axis=2), axis=2)
+                norms = tf.multiply(tf.norm(self.x, axis=2), tf.norm(self.y_, axis=2))
+                cosine_loss = 1 - tf.divide(xy_dot, norms)
+                self.reconstr_loss = tf.reduce_mean(tf.reduce_sum(cosine_loss, axis=1))
                 tf.summary.scalar('reconstruction_loss', self.reconstr_loss)
             with tf.variable_scope('optimizer'):
                 factor = 0.5*self.kl_alpha
