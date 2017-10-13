@@ -6,5 +6,6 @@
 *.log
 *.synctex.gz
 *.npy
+models/*
 
 data/fiction
