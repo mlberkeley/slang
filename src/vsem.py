@@ -19,18 +19,14 @@ class VSEM(model.Model):
 
         # build encoder
         with tf.variable_scope('encoder'):
-            with tf.variable_scope('lstm'):
-                encode_lstm = tf.contrib.rnn.LSTMCell(self.params['encode_hid'])
-                encode_lstm_dropout = tf.contrib.rnn.DropoutWrapper(encode_lstm, self.keep_prob)
-                encode_init = encode_lstm.zero_state(self.batch_size, tf.float32)
-                encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_lstm, self.x,
+            with tf.variable_scope('rnn'):
+                encode_rnn = tf.contrib.rnn.LSTMCell(self.params['encode_hid'])
+                encode_rnn_dropout = tf.contrib.rnn.DropoutWrapper(encode_rnn, self.keep_prob)
+                encode_init = tf.contrib.rnn.LSTMStateTuple(
+                                  tf.zeros([self.batch_size, self.params['encode_hid']),
+                                  tf.zeros([self.batch_size, self.params['encode_hid']))
+                encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_rnn, self.x,
                                                                  initial_state = encode_init)
-                h = encode_outputs[:, -1, :]
-                init_c = tf.zeros([self.batch_size, self.params['encode_hid']])
-                init_h = tf.zeros([self.batch_size, self.params['encode_hid']])
-                encode_outputs, encode_final = self.lstm_layer(init_c, init_h,
-                                                               self.params['seq_len'],
-                                                               'encode', self.x_onehot)
                 h = encode_outputs[:, -1, :]
             with tf.variable_scope('mean'):
                 w_mu_shape = [self.params['encode_hid'], self.params['latent_dims']]
@@ -56,18 +52,18 @@ class VSEM(model.Model):
 
         # build decoder
         with tf.variable_scope('decoder'):
-            with tf.variable_scope('lstm'):
+            with tf.variable_scope('rnn'):
+                decode_rnn = tf.contrib.rnn.LSTMCell(self.params['decode_hid'])
+                decode_rnn_dropout = tf.contrib.rnn.DropoutWrapper(decode_rnn, self.keep_prob)
                 w_z_shape = [self.params['latent_dims'], self.params['decode_hid']]
                 self.weights['w_z'] = tf.get_variable('w_z', w_z_shape, initializer=xavier)
                 self.weights['b_z'] = tf.get_variable('b_z', self.params['decode_hid'],
                                                       initializer=tf.zeros_initializer())
-                init_c = tf.tanh(tf.matmul(self.z_decode, self.weights['w_z']) +
-                                                          self.weights['b_z'])
-                init_h = tf.zeros([self.batch_size, self.params['decode_hid']])
-                empty = tf.zeros([self.batch_size, self.params['seq_len'], 1])
-                decode_outputs, decode_final = self.lstm_layer(init_c, init_h,
-                                                               self.params['seq_len'],
-                                                               'decode', empty)
+                dc = tf.tanh(tf.matmul(self.z_decode, self.weights['w_z']) + self.weights['b_z'])
+                empty = tf.zeros([self.batch_size, self.params['seq_len'],
+                                                   self.params['decode_hid']])
+                decode_outputs, decode_final = tf.nn.dynamic_rnn(decode_rnn, empty,
+                                                                 initial_state=dc)
             with tf.variable_scope('pred'):
                 w_out_shape = [self.params['decode_hid'], self.params['wordvec_dims']]
                 self.weights['w_out'] = tf.get_variable('w_out', w_out_shape, initializer=xavier)
@@ -82,10 +78,10 @@ class VSEM(model.Model):
         with tf.variable_scope('loss'):
             with tf.variable_scope('kullback_leibler'):
                 kl_div_batch = 1 + self.log_var - tf.square(self.mu) - tf.exp(self.log_var)
-                self.kl_div = tf.reduce_mean(-tf.reduce_sum(kl_div_batch, 1))
+                self.kl_div = tf.reduce_mean(-tf.reduce_mean(kl_div_batch, 1))
                 tf.summary.scalar('kl_divergence', self.kl_div)
             with tf.variable_scope('reconstruction'):
-                xy_dot = tf.reduce_sum(tf.multiply(x, y, axis=2), axis=2)
+                xy_dot = tf.reduce_sum(tf.multiply(self.x, self.y_), axis=2)
                 norms = tf.multiply(tf.norm(self.x, axis=2), tf.norm(self.y_, axis=2))
                 cosine_loss = 1 - tf.divide(xy_dot, norms)
                 self.reconstr_loss = tf.reduce_mean(tf.reduce_sum(cosine_loss, axis=1))
@@ -122,14 +118,14 @@ class VSEM(model.Model):
 
     def decode(self, z):
         z = np.expand_dims(z, axis=0)
-        _, seq_len = self.x.get_shape().as_list()
-        dummy_x = np.zeros((1, seq_len))
+        _, seq_len, dims = self.x.get_shape().as_list()
+        dummy_x = np.zeros((1, seq_len, dims))
         feed = { self.keep_prob:1.0,
                  self.batch_size:1,
                  self.x:dummy_x,
                  self.z_input:z,
                  self.is_decode:True }
-        pred = self.sess.run(self.pred, feed_dict=feed)
+        pred = self.sess.run(self.y_, feed_dict=feed)
         return pred[0,:,:]
 
 

@@ -63,7 +63,7 @@ class Model(abc.ABC):
         """
         if not os.path.exists(self.ckpt_dir):
             raise IOError('The specified checkpoint directory does not exist.')
-        latest_ckpt = tf.train.latest_checkpoint(self.ckpt_dir)
+        latest_ckpt = tf.train.latest_checkpoint(self.dir)
         if latest_ckpt:
             print(latest_ckpt)
             self.saver.restore(self.sess, latest_ckpt)
