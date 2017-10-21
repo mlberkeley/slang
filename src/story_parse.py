@@ -143,7 +143,6 @@ class Parser:
         print('Done collecting stories')
         return all_stories
 
-<<<<<<< HEAD
     def _get_embeddings(self, embedding_path):
         """
             Creates a dictionary from words to embedding vectors
@@ -162,8 +161,7 @@ class Parser:
     :param word: String word to be converted into an index
     :return: The index of the one-hot vector associated with the given word
     """
-=======
->>>>>>> a5f927bf75c75a85f2afb8064757b1b851ade645
+
     def word_to_index(self, word):
         """
         Returns the encoded index of the word; if the word is not in the encoding dictionary,
