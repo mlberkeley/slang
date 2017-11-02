@@ -113,7 +113,7 @@ class VSEM(model.Model):
 
     def encode_batch(self, x):
         feed = { self.keep_prob:1.0,
-                 self.batch_size:1,
+                 self.batch_size:x.shape[0],
                  self.x:x }
         return self.sess.run([self.mu, self.log_var, self.z], feed_dict=feed)
 
