@@ -108,27 +108,34 @@ class VSEM(model.Model):
         else:
             self.sess.run(self.train_step, feed_dict=feed)
 
-    def encode(self, x):
-        x = np.expand_dims(x, axis=0)
+    def encode_batch(self, x):
         feed = { self.keep_prob:1.0,
                  self.batch_size:1,
                  self.x:x }
-        mu, log_var, z = self.sess.run([self.mu, self.log_var, self.z], feed_dict=feed)
-        return mu[0,:], log_var[0,:], z[0,:]
+        return self.sess.run([self.mu, self.log_var, self.z], feed_dict=feed)
 
-    def decode(self, z):
-        z = np.expand_dims(z, axis=0)
-        _, seq_len, dims = self.x.get_shape().as_list()
-        dummy_x = np.zeros((1, seq_len, dims))
+    def decode_batch(self, z):
+        batch_size, seq_len, dims = self.x.get_shape().as_list()
+        dummy_x = np.zeros(self.x.get_shape())
         feed = { self.keep_prob:1.0,
-                 self.batch_size:1,
+                 self.batch_size:batch_size,
                  self.x:dummy_x,
                  self.z_input:z,
                  self.is_decode:True }
         pred = self.sess.run(self.y_, feed_dict=feed)
+        return pred
+
+    def encode(self, x):
+        x = np.expand_dims(x, axis=0)
+        mu, lv, z = self.encode_batch(x)
+        return mu[0,:], lv[0,:], z[0,:]
+
+    def decode(self, z):
+        z = np.expand_dims(z, axis=0)
+        pred = self.decode_batch(z)
         return pred[0,:,:]
 
-
     def predict(self, x):
+        x = np.expand_dims(x, axis=0)
         _, _, z = self.encode(x)
-        return self.decode(z)
+        return self.decode(z[0,:])
