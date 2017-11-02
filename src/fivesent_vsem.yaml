@@ -1,7 +1,8 @@
-load: False
-load_idx: 1
+load: True
+load_idx: 0
 dir: ../vsem_models/fivesent_wordvec/model
 seq_len: 25
+word_keep: 0.5
 wordvec_dims: 100
 encode_hid: 512
 latent_dims: 256
