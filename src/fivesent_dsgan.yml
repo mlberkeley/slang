@@ -1,0 +1,36 @@
+shared_all: &shared
+    seq_len: 25
+    num_sent: 5
+shared_model: &model
+    latent_dims: 256
+parser:
+    datasets: [../data/sentence5.csv]
+    filetype: csv
+    << : *shared
+    
+training:
+    train_steps: 10000000
+    print_every: 10000
+    save_every: 100000
+    write_every: 10
+    
+dsgan:
+    load: False
+    load_idx: 0
+    dir: ../dsgan_models/fivesent/model
+    smpl_dims: 128
+    gen_hid: 512
+    dis_hid: 512
+    learning_rate: 1.0e-4
+    lambda: 10
+    << : *shared
+    << : *model
+vsem:
+    load: True
+    load_idx: 0
+    dir: ../vsem_models/fivesent_wordvec/model
+    encode_hid: 512
+    decode_hid: 512
+    learning_rate: 1.0e-4
+    << : *shared
+    << : *model

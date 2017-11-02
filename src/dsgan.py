@@ -1,8 +1,8 @@
 import model
 
-"""The Distribution Sequence Generative Adversarial Network. Produces an adversarially trained
-sequence of sentence distributions, to be decoded by the VSEM."""
 class DSGAN(model.Model):
+    """The Distribution Sequence Generative Adversarial Network. Produces an adversarially trained
+    sequence of sentence distributions, to be decoded by the VSEM."""
 
     def build_generator(self):
         sample = tf.random_normal([self.batch_size, self.params['num_sent'], self.params['smpl_dims']])
@@ -27,12 +27,16 @@ class DSGAN(model.Model):
                                                    initializer=tf.zeros_initializer())
             lv_flat = tf.matmul(gen_out_flat, self.weights['w_lv']) + self.weights['b_lv']
             lv = tf.reshape(lv_flat, [-1, self.params['num_sent'], self.params['latent_dims']])
+        with tf.variable_scope('latent'):
+            sample_normal = tf.random_normal([self.batch_size, self.params['num_sent'],
+                                              self.params['latent_dims']])
+            z = (tf.sqrt(tf.exp(lv)) * sample_normal) + mu
 
-        return mu, lv
+        return mu, lv, z
 
     def build_discriminator(self, data):
         with tf.variable_scope('lstm'):
-            dis_lstm = tf.contrib.rnn.LSTMCell(self.params['dis_hid'])
+            dis_lstm = SharedLSTMCell(self.params['dis_hid'])
             dis_lstm_dropout = tf.contrib.rnn.DropoutWrapper(dis_lstm, self.dis_keep_prob)
             dis_init = dis_lstm.zero_state(self.batch_size, tf.float32)
             dis_outputs, dis_final = tf.nn.dynamic_rnn(dis_lstm, data, initial_state=dis_init)
@@ -53,20 +57,24 @@ class DSGAN(model.Model):
 
         # build generator and discriminator
         with tf.variable_scope('generator'):
-            self.y_mus, self.y_lvs = build_generator()
+            self.y_mus, self.y_lvs, self.zs = build_generator()
         self.dis_x = tf.concat([self.x_mus, self.x_lvs], axis=2)
         self.dis_y = tf.concat([self.y_mus, self.y_lvs], axis=2)
-        with tf.variable_scope('discriminator'):
+        with tf.variable_scope('discriminator') as scope:
+            with tf.variable_scope('combination'):
+                self.alpha = tf.random_uniform([self.batch_size, 1])
+                self.cvx_comb = (1-self.alpha)*self.dis_x + self.alpha*self.dis_y
             self.pred_x = build_discriminator(self.dis_x)
+            scope.reuse_variables()
             self.pred_y = build_discriminator(self.dis_y)
+            scope.reuse_variables()
+            self.comb_out = build_discriminator(self.cxv_comb)
 
         # calculate loss
         with tf.variable_scope('loss'):
             # gradient penalty
             with tf.variable_scope('grad_penalty'):
-                self.alpha = tf.random_uniform([self.batch_size, 1])
-                self.cvx_comb = (1-self.alpha)*self.dis_x + self.alpha*self.dis_y
-                self.grads = tf.gradients(build_discriminator(self.cvx_comb), [cvx_comb])[0]
+                self.grads = tf.gradients(self.comb_out, [self.cvx_comb])[0]
                 self.l2 = tf.sqrt(tf.reduce_sum(tf.square(grads), reduction_indices=[1]))
                 self.grad_penalty = tf.reduce_mean((self.l2-1.0)**2)
             
@@ -105,4 +113,4 @@ class DSGAN(model.Model):
     def generate(self):
         feed = {self.gen_keep_prob:1.0,
                 self.batch_size:1 }
-        return self.sess.run([self.y_mus, self.y_lvs], feed_dict=feed)
+        return self.sess.run(self.zs, feed_dict=feed)[0,:,:]
