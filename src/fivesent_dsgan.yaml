@@ -10,9 +10,10 @@ parser:
     
 training:
     train_steps: 10000000
-    print_every: 10000
-    save_every: 100000
+    print_every: 1000
+    save_every: 10000
     write_every: 10
+    train_gen_every: 5
     
 dsgan:
     load: False

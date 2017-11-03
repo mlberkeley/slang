@@ -40,16 +40,17 @@ def main():
             story_lvs = np.array(story_lvs)
             dsgan.train_discriminator(np.array([story_mus, story_lvs]))
 
-            story_mus = []
-            story_lvs = []
-            for _ in range(params['dsgan']['batch_size']):
-                mus, lvs, _ = vsem.encode_batch(np.array(sent.get_random_index_story()))
-                story_mus.append(mus)
-                story_lvs.append(lvs)
-            story_mus = np.array(story_mus)
-            story_lvs = np.array(story_lvs)
-            dsgan.train_generator(np.array([story_mus, story_lvs]), idx,
-                                  write_summaries=write_summaries)
+            if idx % train['train_gen_every'] == 0:
+                story_mus = []
+                story_lvs = []
+                for _ in range(params['dsgan']['batch_size']):
+                    mus, lvs, _ = vsem.encode_batch(np.array(sent.get_random_index_story()))
+                    story_mus.append(mus)
+                    story_lvs.append(lvs)
+                story_mus = np.array(story_mus)
+                story_lvs = np.array(story_lvs)
+                dsgan.train_generator(np.array([story_mus, story_lvs]), idx,
+                                      write_summaries=write_summaries)
 
 if __name__ == "__main__":
     main()

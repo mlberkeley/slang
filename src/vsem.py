@@ -118,8 +118,9 @@ class VSEM(model.Model):
         return self.sess.run([self.mu, self.log_var, self.z], feed_dict=feed)
 
     def decode_batch(self, z):
-        batch_size, seq_len, dims = self.x.get_shape().as_list()
-        dummy_x = np.zeros(self.x.get_shape())
+        _, seq_len, dims = self.x.get_shape().as_list()
+        batch_size = z.shape[0]
+        dummy_x = np.zeros((batch_size, seq_len, dims))
         feed = { self.keep_prob:1.0,
                  self.batch_size:batch_size,
                  self.x:dummy_x,
