@@ -7,3 +7,4 @@
 data/fiction
 src/checkpoints/*
 visualization/logs
+Dockerfile
