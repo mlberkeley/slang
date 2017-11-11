@@ -1,10 +1,10 @@
+import csv
 import numpy as np
 from nltk import word_tokenize
 from nltk.tokenize import sent_tokenize
-from urllib.request import urlopen
+import pickle
 import re
-import unicodedata
-import csv
+from urllib.request import urlopen
 import pickle
 
 PAD_WORD = 'ppaadd'
@@ -183,10 +183,22 @@ class Parser:
         :param index: Integer index to be converted into a word
         :return: The word associated with the given one-hot vector index
         """
-        if index in self.decode_dict:
-            return self.decode_dict[index]
-        else:
-            return UNK
+        # if index in self.decode_dict:
+        #     return self.decode_dict[index]
+        # else:
+        #     return UNK
+        nearest_word = 'unk'
+        greatest_sim = -1
+
+        for word in self.encode_dict.keys():
+            dot_prod = np.dot(index, self.encode_dict[word])
+            norms = np.linalg.norm(index) * np.linalg.norm(self.encode_dict[word])
+            similarity = dot_prod / norms
+            if similarity > greatest_sim:
+                nearest_word = word
+                greatest_sim = similarity
+
+        return nearest_word
 
     def get_sentence(self, sentence_index):
         """
@@ -270,6 +282,21 @@ class Parser:
         rand = np.random.random_integers(marker)
         return self.all_stories[rand]
 
+    def readable_sentence(self, sent):
+        text = ''
+        j = 0
+        while j < len(sent):
+            word = sent[j]
+            if word == PAD_WORD:
+                break
+            text += word
+            text += ' '
+            j += 1
+        text = text[:-2]
+        text += '.'
+        return text
+
+
     def get_random_story(self): 
         """
         Retrieve a random story in human readable format
@@ -316,13 +343,19 @@ class Parser:
         self.book_urls = book_urls
         self.word_tokens, self.sent_tokens, self.all_words, self.stories = \
             self._clean(self.book_urls)
-        self.encode_dict = {} #{'this' : 5} if the one hot is 00001000...
-        self.decode_dict = {} # {5: 'this}
-        if ((encode_dict != None) and (decode_dict != None)):
-            self.encode_dict, self.decode_dict = encode_dict, decode_dict
-        else:
-            self.encode_dict, self.decode_dict = self.create_dicts()
-        self.num_unique_words = len(self.decode_dict)
+        # self.encode_dict = {} #{'this' : 5} if the one hot is 00001000...
+        # self.decode_dict = {} # {5: 'this}
+        # if ((encode_dict != None) and (decode_dict != None)):
+        #     self.encode_dict, self.decode_dict = encode_dict, decode_dict
+        # else:
+        #     self.encode_dict, self.decode_dict = self.create_dicts()
+        with open('../data/w2v_100d.pickle', 'rb') as f:
+            wordvecs = pickle.load(f)
+            self.encode_dict = {}
+            for word in wordvecs['word_to_index_dict'].keys():
+                index = wordvecs['word_to_index_dict'][word]
+                self.encode_dict[word] = wordvecs['index_to_vec_array'][index, :]
+        self.num_unique_words = len(self.encode_dict)
         self.all_sentences = self._get_all_sentences()
         self.all_stories = self._get_all_stories()
         if embedding_path:
