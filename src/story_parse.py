@@ -263,6 +263,21 @@ class Parser:
         rand = np.random.random_integers(marker)
         return self.all_stories[rand]
 
+    def readable_sentence(self, sent):
+        text = ''
+        j = 0
+        while j < len(sent):
+            word = sent[j]
+            if word == PAD_WORD:
+                break
+            text += word
+            text += ' '
+            j += 1
+        text = text[:-2]
+        text += '.'
+        return text
+
+
     def get_random_story(self): 
         """
         Retrieve a random story in human readable format
