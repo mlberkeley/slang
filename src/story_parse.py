@@ -5,7 +5,7 @@ from nltk.tokenize import sent_tokenize
 import pickle
 import re
 from urllib.request import urlopen
-import unicodedata
+import pickle
 
 PAD_WORD = 'ppaadd'
 UNK = 'unk'
@@ -142,6 +142,25 @@ class Parser:
             all_stories.append([self.sentence_to_index_sentence(sent) for sent in story])
         print('Done collecting stories')
         return all_stories
+
+    def _get_embeddings(self, embedding_path):
+        """
+            Creates a dictionary from words to embedding vectors
+        """
+        X_embedding = pickle.load(embedding_path)
+        
+        dict_embedding = {}
+        for k, v in self.encode_dict.items():
+            dict_embedding[k] = X_embedding[v,:] + X_embedding[2*v,:]
+        return dict_embedding
+
+    """
+    Returns the encoded index of the word; if the word is not in the encoding dictionary, returns
+    the unk index
+
+    :param word: String word to be converted into an index
+    :return: The index of the one-hot vector associated with the given word
+    """
 
     def word_to_index(self, word):
         """
@@ -303,8 +322,21 @@ class Parser:
             story += ' ' 
         return story
 
+    
     def __init__(self, book_urls, text_or_url, num_words, max_length,
+                       embedding_path=None,
                        encode_dict=None, decode_dict=None):
+        """
+            Creates Parser object from book_urs
+            :param book_url: book urls or path
+            :param text_or_url: boolean specifying raw text or url
+            :param num_words: size of the vocabulary
+            :param max_length: max sentence length
+            :param embedding_path: path to a pickled embedding model (word2vec)
+            :param encode_dict: dictionary from word to code
+            :param decode_dict: dictionary from code to word
+            :returns: Parser object
+        """
         self.text_or_url = text_or_url
         self.num_words = num_words
         self.max_sentence_length = max_length
@@ -326,6 +358,8 @@ class Parser:
         self.num_unique_words = len(self.encode_dict)
         self.all_sentences = self._get_all_sentences()
         self.all_stories = self._get_all_stories()
+        if embedding_path:
+            self.embeddings = self._get_embeddings(embedding_path)
         print("Words:", len(self.all_words))
         print("Unique words:", len(self.encode_dict.keys()))
         print("Sentences:", len(self.all_sentences))
