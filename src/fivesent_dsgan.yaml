@@ -10,9 +10,10 @@ parser:
     
 training:
     train_steps: 10000000
-    print_every: 10000
-    save_every: 100000
+    print_every: 1000
+    save_every: 10000
     write_every: 10
+    train_gen_every: 5
     
 dsgan:
     load: False
@@ -21,6 +22,8 @@ dsgan:
     smpl_dims: 128
     gen_hid: 512
     dis_hid: 512
+    keep_prob: 0.5
+    batch_size: 50
     learning_rate: 1.0e-4
     lambda: 10
     << : *shared
@@ -29,6 +32,7 @@ vsem:
     load: True
     load_idx: 0
     dir: ../vsem_models/fivesent_wordvec/model
+    wordvec_dims: 100
     encode_hid: 512
     decode_hid: 512
     learning_rate: 1.0e-4

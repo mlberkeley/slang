@@ -19,13 +19,14 @@ class VSEM(model.Model):
 
         # build encoder
         with tf.variable_scope('encoder'):
-            with tf.variable_scope('rnn'):
-                encode_rnn = tf.contrib.rnn.LSTMCell(self.params['encode_hid'])
-                encode_rnn_dropout = tf.contrib.rnn.DropoutWrapper(encode_rnn, self.keep_prob)
-                encode_init = tf.contrib.rnn.LSTMStateTuple(
-                                  tf.zeros([self.batch_size, self.params['encode_hid']),
-                                  tf.zeros([self.batch_size, self.params['encode_hid']))
-                encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_rnn, self.x,
+            with tf.variable_scope('lstm'):
+                encode_lstm = tf.contrib.rnn.LSTMCell(self.params['encode_hid'])
+                encode_lstm_dropout = tf.contrib.rnn.DropoutWrapper(encode_lstm, self.keep_prob)
+                encode_cell_zeros = tf.zeros([self.batch_size, self.params['encode_hid']])
+                encode_hidd_zeros = tf.zeros([self.batch_size, self.params['encode_hid']])
+                encode_init = tf.contrib.rnn.LSTMStateTuple(encode_cell_zeros,
+                                                            encode_hidd_zeros)
+                encode_outputs, encode_final = tf.nn.dynamic_rnn(encode_lstm, self.x,
                                                                  initial_state = encode_init)
                 h = encode_outputs[:, -1, :]
             with tf.variable_scope('mean'):
@@ -52,18 +53,20 @@ class VSEM(model.Model):
 
         # build decoder
         with tf.variable_scope('decoder'):
-            with tf.variable_scope('rnn'):
-                decode_rnn = tf.contrib.rnn.LSTMCell(self.params['decode_hid'])
-                decode_rnn_dropout = tf.contrib.rnn.DropoutWrapper(decode_rnn, self.keep_prob)
+            with tf.variable_scope('lstm'):
+                decode_lstm = tf.contrib.rnn.LSTMCell(self.params['decode_hid'])
+                decode_lstm_dropout = tf.contrib.rnn.DropoutWrapper(decode_lstm, self.keep_prob)
                 w_z_shape = [self.params['latent_dims'], self.params['decode_hid']]
                 self.weights['w_z'] = tf.get_variable('w_z', w_z_shape, initializer=xavier)
                 self.weights['b_z'] = tf.get_variable('b_z', self.params['decode_hid'],
                                                       initializer=tf.zeros_initializer())
                 dc = tf.tanh(tf.matmul(self.z_decode, self.weights['w_z']) + self.weights['b_z'])
+                decode_init = tf.contrib.rnn.LSTMStateTuple(dc, tf.zeros([self.batch_size,
+                                                                self.params['decode_hid']]))
                 empty = tf.zeros([self.batch_size, self.params['seq_len'],
                                                    self.params['decode_hid']])
-                decode_outputs, decode_final = tf.nn.dynamic_rnn(decode_rnn, empty,
-                                                                 initial_state=dc)
+                decode_outputs, decode_final = tf.nn.dynamic_rnn(decode_lstm, empty,
+                                                                 initial_state=decode_init)
             with tf.variable_scope('pred'):
                 w_out_shape = [self.params['decode_hid'], self.params['wordvec_dims']]
                 self.weights['w_out'] = tf.get_variable('w_out', w_out_shape, initializer=xavier)
@@ -110,13 +113,14 @@ class VSEM(model.Model):
 
     def encode_batch(self, x):
         feed = { self.keep_prob:1.0,
-                 self.batch_size:1,
+                 self.batch_size:x.shape[0],
                  self.x:x }
         return self.sess.run([self.mu, self.log_var, self.z], feed_dict=feed)
 
     def decode_batch(self, z):
-        batch_size, seq_len, dims = self.x.get_shape().as_list()
-        dummy_x = np.zeros(self.x.get_shape())
+        _, seq_len, dims = self.x.get_shape().as_list()
+        batch_size = z.shape[0]
+        dummy_x = np.zeros((batch_size, seq_len, dims))
         feed = { self.keep_prob:1.0,
                  self.batch_size:batch_size,
                  self.x:dummy_x,

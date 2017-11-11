@@ -10,33 +10,35 @@ class Model(abc.ABC):
     def __init__(self, params, gpu_fraction=0.3):
         self.params = params
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=gpu_fraction)
-        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+        self.graph = tf.Graph()
+        self.sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options), graph=self.graph)
         self.weights = {}
 
         print('Constructing model')
-        self.construct()
+        with self.graph.as_default():
+            self.construct()
 
-        self.saver = tf.train.Saver()
-        if self.params['load']:
-            dir_index = self.params['load_idx']
-        else:
-            dir_index = 0
-            while os.path.exists(self.params['dir'] + '_' + str(dir_index)):
-                dir_index += 1
-        self.dir = self.params['dir'] + '_' + str(dir_index)
-        if not os.path.exists(self.dir):
-            os.makedirs(self.dir)
-        self.ckpt_dir = self.dir + '/checkpoints'
+            self.saver = tf.train.Saver()
+            if self.params['load']:
+                dir_index = self.params['load_idx']
+            else:
+                dir_index = 0
+                while os.path.exists(self.params['dir'] + '_' + str(dir_index)):
+                    dir_index += 1
+            self.dir = self.params['dir'] + '_' + str(dir_index)
+            if not os.path.exists(self.dir):
+                os.makedirs(self.dir)
+            self.ckpt_dir = self.dir + '/checkpoints'
 
-        if self.params['load']:
-            print('Loading saved checkpoint from {}'.format(self.ckpt_dir))
-            self.load()
-        else:
-            print('Initializing new instance of model')
-            self.log_dir = self.dir + '/logs'
-            self.merged = tf.summary.merge_all()
-            self.writer = tf.summary.FileWriter(self.log_dir, self.sess.graph)
-            self.sess.run(tf.global_variables_initializer())
+            if self.params['load']:
+                print('Loading saved checkpoint from {}'.format(self.ckpt_dir))
+                self.load()
+            else:
+                print('Initializing new instance of model')
+                self.log_dir = self.dir + '/logs'
+                self.merged = tf.summary.merge_all()
+                self.writer = tf.summary.FileWriter(self.log_dir, self.sess.graph)
+                self.sess.run(tf.global_variables_initializer())
 
     @abc.abstractmethod
     def construct(self):
