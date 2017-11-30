@@ -141,7 +141,7 @@ class Parser:
         for story in self.stories:
             all_stories.append([self.sentence_to_index_sentence(sent) for sent in story])
         print('Done collecting stories')
-        return all_stories
+        return np.array(all_stories)
 
     def word_to_index(self, word):
         """
@@ -251,7 +251,7 @@ class Parser:
             batch.append(self.get_sentence(rand))
         return np.array(batch)
 
-    def get_random_index_story(self, threshold=1):
+    def get_random_index_stories(self, num=1, threshold=1):
         """
         Retrieve a random story from the dataset
 
@@ -260,7 +260,7 @@ class Parser:
                  list of words in indexed format
         """
         marker = int(threshold*(len(self.all_stories)-1))
-        rand = np.random.random_integers(marker)
+        rand = np.random.random_integers(marker, size=(num,))
         return self.all_stories[rand]
 
     def get_random_story(self): 

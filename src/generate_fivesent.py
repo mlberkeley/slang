@@ -26,10 +26,18 @@ def main():
         train = params['training']
         for i in range(train['train_steps']):
             idx = i + 1
+            if idx % train['save_every'] == 0:
+                dsgan.save()
             if idx % train['print_every'] == 0:
                 print("Training step {}".format(idx))
                 generate_story()
             write_summaries = True if idx % train['write_every'] == 0 else False
+            stories = sent.get_random_index_stories(num=params['dsgan']['batch_size'])
+            s = stories.shape
+            mus, lvs, _ = vsem.encode_batch(np.reshape(stories, (s[0]*s[1], s[2], s[3])))
+            story_mus = np.reshape(mus, (s[0], s[1], mus.shape[1]))
+            story_lvs = np.reshape(lvs, (s[0], s[1], lvs.shape[1]))
+            """
             story_mus = []
             story_lvs = []
             for _ in range(params['dsgan']['batch_size']):
@@ -38,9 +46,16 @@ def main():
                 story_lvs.append(lvs)
             story_mus = np.array(story_mus)
             story_lvs = np.array(story_lvs)
+            """
             dsgan.train_discriminator(np.array([story_mus, story_lvs]))
 
             if idx % train['train_gen_every'] == 0:
+                stories = sent.get_random_index_stories(num=params['dsgan']['batch_size'])
+                s = stories.shape
+                mus, lvs, _ = vsem.encode_batch(np.reshape(stories, (s[0]*s[1], s[2], s[3])))
+                story_mus = np.reshape(mus, (s[0], s[1], mus.shape[1]))
+                story_lvs = np.reshape(lvs, (s[0], s[1], lvs.shape[1]))
+                """
                 story_mus = []
                 story_lvs = []
                 for _ in range(params['dsgan']['batch_size']):
@@ -49,6 +64,7 @@ def main():
                     story_lvs.append(lvs)
                 story_mus = np.array(story_mus)
                 story_lvs = np.array(story_lvs)
+                """
                 dsgan.train_generator(np.array([story_mus, story_lvs]), idx,
                                       write_summaries=write_summaries)
 
