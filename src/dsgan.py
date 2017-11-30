@@ -5,16 +5,6 @@ class DSGAN(model.Model):
     """The Distribution Sequence Generative Adversarial Network. Produces an adversarially trained
     sequence of sentence distributions, to be decoded by the VSEM."""
 
-    def conv1d(self, x, filter_size, stride, feature_map_dim, name):
-        with tf.variable_scope(name):
-            filter_dims = [filter_size, x.get_shape()[-1], feature_map_dim]
-            self.weights['w_'+name] = tf.get_variable('w_'+name, filter_dims,
-                                                      initializer=self.xavier)
-            self.weights['b_'+name] = tf.get_variable('b_'+name, feature_map_dim,
-                                                      initializer=tf.zeros_initializer())
-            conv = tf.nn.conv1d(x, self.weights['w_'+name], stride, padding='SAME')
-            return tf.nn.relu(conv + self.weights['b_'+name])
-
     def build_generator(self):
         sample = tf.random_normal([self.batch_size, self.params['num_sent'], self.params['smpl_dims']])
         with tf.variable_scope('rnn'):
@@ -23,8 +13,9 @@ class DSGAN(model.Model):
             gen_cell_zeros = tf.zeros([self.batch_size, self.params['gen_hid']])
             gen_hidd_zeros = tf.zeros([self.batch_size, self.params['gen_hid']])
             gen_init = tf.contrib.rnn.LSTMStateTuple(gen_cell_zeros, gen_hidd_zeros)
-            gen_outputs, gen_final = tf.nn.dynamic_rnn(gen_lstm, sample, initial_state=gen_init)
-            gen_out_flat = tf.reshape(gen_outputs, [-1, self.params['gen_hid']])
+            gen_outputs, gen_final = tf.nn.static_rnn(gen_lstm, tf.unstack(sample, axis=1),
+                                                      initial_state=gen_init)
+            gen_out_flat = tf.concat(gen_outputs, axis=0)
         w_out_shape = [self.params['gen_hid'], self.params['latent_dims']]
 
         with tf.variable_scope('mean'):
@@ -48,41 +39,29 @@ class DSGAN(model.Model):
         return mu, lv, z
 
     def build_discriminator(self, data):
-        with tf.variable_scope('cnn'):
-            x = tf.transpose(data, perm=[0, 2, 1])
-            conv1 = self.conv1d(data, 10, 1, 16, 'dis_1')
-            conv2 = self.conv1d(conv1, 10, 1, 32, 'dis_2')
-            pool3 = tf.nn.pool(conv2, [4], 'MAX', 'SAME')
-            conv4 = self.conv1d(pool3, 10, 1, 64, 'dis_4')
-            conv5 = self.conv1d(conv4, 10, 1, 64, 'dis_5')
-            pool6 = tf.nn.pool(conv5, [4], 'MAX', 'SAME')
-            conv7 = self.conv1d(pool6, 10, 1, 32, 'dis_6')
-            conv8 = self.conv1d(conv7, 10, 1, 16, 'dis_7')
-            pool9 = tf.nn.pool(conv8, [4], 'MAX', 'SAME')
-            conv_shape = pool3.get_shape().as_list()
-            cnn_out = tf.reshape(pool9, [-1, conv_shape[1]*conv_shape[2]])
-        """
         with tf.variable_scope('rnn'):
             dis_lstm = tf.contrib.rnn.LSTMCell(self.params['dis_hid'])
             dis_lstm_dropout = tf.contrib.rnn.DropoutWrapper(dis_lstm, self.dis_keep_prob)
             dis_cell_zeros = tf.zeros([self.batch_size, self.params['dis_hid']])
             dis_hidd_zeros = tf.zeros([self.batch_size, self.params['dis_hid']])
             dis_init = tf.contrib.rnn.LSTMStateTuple(dis_cell_zeros, dis_hidd_zeros)
-            dis_outputs, dis_final = tf.nn.dynamic_rnn(dis_lstm, data, initial_state=dis_init)
-            h = dis_outputs[:, -1, :]
-        """
+            dis_outputs, dis_final = tf.nn.static_rnn(dis_lstm, tf.unstack(data, axis=1),
+                                                      initial_state=dis_init)
+            h = dis_outputs[-1]
         with tf.variable_scope('pred'):
-            w_dis_shape = [cnn_out.get_shape()[1], 1]
+            w_dis_shape = [self.params['dis_hid'], 1]
             self.weights['w_dis'] = tf.get_variable('w_dis', w_dis_shape, initializer=self.xavier)
             self.weights['b_dis'] = tf.get_variable('b_dis', 1, initializer=tf.zeros_initializer())
-            return tf.sigmoid(tf.matmul(cnn_out, self.weights['w_dis']) + self.weights['b_dis'])
+            return tf.matmul(h, self.weights['w_dis']) + self.weights['b_dis']
 
     def construct(self):
         self.gen_keep_prob = tf.placeholder(tf.float32)
         self.dis_keep_prob = tf.placeholder(tf.float32)
         self.batch_size = tf.placeholder(tf.int32)
-        self.x_mus = tf.placeholder(tf.float32, [None, self.params['num_sent'], self.params['latent_dims']])
-        self.x_lvs = tf.placeholder(tf.float32, [None, self.params['num_sent'], self.params['latent_dims']])
+        self.x_mus = tf.placeholder(tf.float32, [None, self.params['num_sent'],
+                                                 self.params['latent_dims']])
+        self.x_lvs = tf.placeholder(tf.float32, [None, self.params['num_sent'],
+                                                 self.params['latent_dims']])
         self.xavier = tf.contrib.layers.xavier_initializer()
 
         # build generator and discriminator
@@ -117,8 +96,11 @@ class DSGAN(model.Model):
                                              scope='generator')
                 self.gen_train = self.gen_optimizer.minimize(self.gen_loss, var_list=gen_vars)
             with tf.variable_scope('dis_loss'):
-                self.dis_loss = tf.reduce_mean(self.pred_y) - tf.reduce_mean(self.pred_x) + \
-                                self.params['lambda']*self.grad_penalty
+                non_grad_loss = tf.reduce_mean(self.pred_y) - tf.reduce_mean(self.pred_x)
+                tf.summary.scalar('no_grad_penalty_discriminator_loss', non_grad_loss)
+                tf.summary.scalar('data_real_discriminator_loss', -tf.reduce_mean(self.pred_x))
+                tf.summary.scalar('data_gen_discriminator_loss', tf.reduce_mean(self.pred_y))
+                self.dis_loss = non_grad_loss + self.params['lambda']*self.grad_penalty
                 tf.summary.scalar('loss_discriminator', self.dis_loss)
                 self.dis_optimizer = tf.train.AdamOptimizer(self.params['learning_rate'])
                 dis_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
@@ -145,7 +127,7 @@ class DSGAN(model.Model):
                 self.batch_size:batch_size,
                 self.x_mus:batch[0],
                 self.x_lvs:batch[1] }
-        self.sess.run(self.gen_train, feed_dict=feed)
+        self.sess.run(self.dis_train, feed_dict=feed)
 
     def train(self, batch, step, write_summaries=False):
         self.train_discriminator(batch)

@@ -10,10 +10,10 @@ parser:
     
 training:
     train_steps: 10000000
-    print_every: 1000
+    print_every: 10000
     save_every: 10000
     write_every: 10
-    train_gen_every: 5
+    train_gen_every: 2
     
 dsgan:
     load: False
@@ -24,7 +24,7 @@ dsgan:
     dis_hid: 512
     keep_prob: 0.5
     batch_size: 50
-    learning_rate: 1.0e-4
+    learning_rate: 5.0e-6
     lambda: 10
     << : *shared
     << : *model
